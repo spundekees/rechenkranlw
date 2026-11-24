@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#7dd3fc">
+<meta name="learningview-settings" content="1">
 <title>Rechenkran</title>
 <style>
   :root {
@@ -274,6 +275,28 @@
     .menu-head p { display: none; }
   }
   @media (max-height: 700px) and (min-width: 761px) { .menu-head p { display: none; } .menu-card h2 { margin: 8px 0 5px; } }
+  .menu-card.narrow { width: min(560px, 100%); }
+  .menu-card.narrow .menu-grid { grid-template-columns: 1fr; gap: 0; }
+  .lvnote { background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 14px; padding: 8px 12px; margin-top: 12px; font-weight: 700; color: #0c4a6e; font-size: 15px; }
+  .lvnote b { color: var(--ink); }
+  .savestate { font-size: 13px; font-weight: 700; color: #64748b; min-height: 1.2em; margin-top: 6px; }
+  .savestate.warn { color: #c2410c; }
+  /* Berichte für Lehrpersonen */
+  .report-card { width: min(1100px, 100%); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; text-align: left; padding: 18px 22px; }
+  .report-card h1 { font-size: 26px; text-align: center; }
+  .report-card .sub { text-align: center; color: #64748b; font-weight: 700; margin: 2px 0 12px; }
+  .rtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .rtable th { text-align: left; background: #f1f5f9; padding: 7px 8px; font-size: 13px; color: #475569; position: sticky; top: -18px; }
+  .rtable td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  .rtable td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rtable tr.click { cursor: pointer; }
+  .rtable tr.click:hover td { background: #f8fafc; }
+  .rtable tr.detail td { background: #f8fafc; padding: 4px 8px 14px 24px; }
+  .badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-weight: 800; font-size: 12px; }
+  .badge.good { background: #dcfce7; color: #166534; } .badge.mid { background: #fef9c3; color: #854d0e; } .badge.low { background: #ffedd5; color: #9a3412; }
+  .badge.open { background: #e2e8f0; color: #475569; }
+  .errlist { color: #9a3412; font-weight: 700; }
+  .rempty { text-align: center; color: #64748b; font-weight: 700; padding: 20px; }
   .big:disabled { filter: grayscale(1); opacity: .5; cursor: default; }
   .big:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #166534; }
   .big.alt { background: linear-gradient(#60a5fa, #2563eb); box-shadow: 0 6px 0 #1e40af; font-size: 20px; padding: 12px 22px; }
@@ -379,6 +402,8 @@
     </div>
     <div class="menu-grid">
       <div class="col">
+        <div class="lvnote" id="lvSettingsNote" hidden>⚙️ <b>Einstellungen für diese Aufgabe.</b> Wähle die Übung, die die Kinder rechnen sollen. Alles wird automatisch gespeichert.</div>
+        <div class="lvnote" id="lvFixed" hidden></div>
         <div class="tabs" id="modeTabs">
           <button data-mode="mul">✖️ Einmaleins</button>
           <button data-mode="add">➕ Plus &amp; Minus</button>
@@ -409,13 +434,18 @@
         </div>
       </div>
       <div class="col side">
-        <h2>Anzahl Aufgaben</h2>
+        <div id="lvChoiceBox" hidden>
+          <h2>Für die Kinder</h2>
+          <div class="chips" id="lvChoiceChips"></div>
+        </div>
+        <h2 id="countTitle">Anzahl Aufgaben</h2>
         <div class="chips" id="countChips"></div>
         <h2>Jahreszeit</h2>
         <div class="chips" id="seasonChips"></div>
         <div class="startbar">
           <p class="poolinfo" id="poolInfo"></p>
           <button class="big" id="btnStart">Los geht's! ▶</button>
+          <p class="savestate" id="saveState"></p>
         </div>
         <div class="howto">
           <kbd>←</kbd> <kbd>→</kbd> Kran fahren · <kbd>↓</kbd> / <kbd>Leertaste</kbd> absetzen.
@@ -426,12 +456,22 @@
   </div>
 </div>
 
+<!-- Bericht für Lehrpersonen (LearningView) -->
+<div class="overlay" id="report">
+  <div class="card report-card">
+    <h1 id="reportTitle">🏗️ Rechenkran</h1>
+    <p class="sub" id="reportSub"></p>
+    <div id="reportBody"></div>
+  </div>
+</div>
+
 <!-- Ende -->
 <div class="overlay" id="endScreen">
   <div class="card">
     <h1 id="endTitle">Geschafft!</h1>
     <div class="stars" id="endStars"></div>
     <div class="stat" id="endStats"></div>
+    <p class="savestate" id="endSaveState"></p>
     <div id="endMistakesBox">
       <h2>Diese Aufgaben üben wir noch:</h2>
       <div class="mistakes" id="endMistakes"></div>
@@ -467,8 +507,34 @@ const settings = {
   range: 20, addOps: ['plus', 'minus'], cross: ['ohne', 'mit'], types: ['ZE+E', 'ZE+ZE'],
   count: 20, sound: true, season: 'auto',
 };
-try { Object.assign(settings, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) {}
-const saveSettings = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {} };
+/* ---------- LearningView ---------- */
+// Läuft der Kran in LearningView, kommen Einstellungen und Speicherstand von dort (kein localStorage).
+const LV_ORIGIN = 'https://learningview.org';
+const IN_FRAME = window.parent !== window;
+const LV = window.learningView || null;
+// null = eigenständig (z. B. GitHub Pages); sonst student | studentReview | class | preview | settings
+const lvMode = LV && LV.mode ? LV.mode : (IN_FRAME ? 'student' : null);
+const lvSend = (m) => { if (IN_FRAME) window.parent.postMessage(m, LV_ORIGIN); };
+// Einstellungen der Lehrperson für diese Aufgabe: { version, settings, allowChoice }
+let lvTemplate = { version: 1, settings: null, allowChoice: true };
+try { if (LV && LV.appTemplate) Object.assign(lvTemplate, JSON.parse(LV.appTemplate)); } catch (e) {}
+const lvLocked = () => lvMode && lvMode !== 'settings' && lvTemplate.settings && !lvTemplate.allowChoice;
+// Speicherstand des Kindes: { version, prefs, rounds: [...] }
+let lvState = { version: 1, prefs: {}, rounds: [] };
+
+if (!lvMode) { try { Object.assign(settings, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) {} }
+if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings);
+const PREF_KEYS = ['season', 'sound'];
+const EXERCISE_KEYS = ['mode', 'rows', 'mulOps', 'range', 'addOps', 'cross', 'types', 'count'];
+const pickKeys = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
+const saveSettings = () => {
+  if (!lvMode) { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {} return; }
+  if (lvMode === 'settings') { lvTemplate.settings = pickKeys(settings, EXERCISE_KEYS); lvSaveTemplate(); return; }
+  if (lvMode === 'student') {
+    lvState.prefs = pickKeys(settings, lvLocked() ? PREF_KEYS : [...PREF_KEYS, ...EXERCISE_KEYS]);
+    lvPersist();
+  }
+};
 
 /* ---------- Kran zeichnen ---------- */
 (function drawCrane() {
@@ -1035,6 +1101,7 @@ async function drop() {
   if (val === ans) {
     // richtig
     if (st.tries === 0) { st.score++; st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak); }
+    st.solved++;
     st.firstTotal++;
     truck.classList.add('ok');
     sfx.good();
@@ -1045,6 +1112,7 @@ async function drop() {
     truck.querySelector('.body').appendChild(c);
     truck.classList.add('loaded');
     st.carrying = false;
+    recordRound(false);
     crate.style.visibility = 'hidden';
     setRope(ROPE_UP, true);
     st.idx++;
@@ -1061,6 +1129,7 @@ async function drop() {
   } else {
     // falsch
     st.tries++;
+    st.errors++;
     st.streak = 0;
     sfx.bad();
     truck.classList.add('wrong', 'shake');
@@ -1107,14 +1176,16 @@ function finish() {
   $('#btnPractice').style.display = list.length ? '' : 'none';
   $('#endMistakes').innerHTML = list.map(m => `<span>${taskText(m)} = ${m.ans}</span>`).join('');
   for (let i = 0; i < 4; i++) setTimeout(() => confetti(200 + Math.random() * 600, 300), i * 250);
+  recordRound(true, stars);
   setTimeout(() => $('#endScreen').classList.add('show'), 700);
 }
 
-function startGame(tasks) {
+function startGame(tasks, practice = false) {
+  st.round = null; st.practice = practice; st.started = Date.now();
   $('#menu').classList.remove('show');
   $('#endScreen').classList.remove('show');
   bubble.classList.remove('show');
-  Object.assign(st, { batchStart: 0, batchEnd: 0, queue: tasks, idx: 0, score: 0, streak: 0, bestStreak: 0, firstTotal: 0, mistakes: new Map() });
+  Object.assign(st, { solved: 0, errors: 0, batchStart: 0, batchEnd: 0, queue: tasks, idx: 0, score: 0, streak: 0, bestStreak: 0, firstTotal: 0, mistakes: new Map() });
   st.slot = 0; st.carrying = false;
   setRope(ROPE_UP);
   placeCarriage(false);
@@ -1197,8 +1268,25 @@ function renderMenu() {
   else if (!n) msg = 'Wähle ohne oder mit Zehnerübergang';
   $('#poolInfo').textContent = msg || `${n} verschiedene Aufgaben`;
   $('#poolInfo').classList.toggle('warn', !!msg);
-  $('#btnStart').disabled = !!msg;
-  $('#btnStart').textContent = "Los geht's! ▶";
+  $('#btnStart').disabled = !!msg || st.lvLoading;
+  $('#btnStart').textContent = st.lvLoading ? 'Lade …' : "Los geht's! ▶";
+  // LearningView
+  const locked = lvLocked();
+  $('#lvSettingsNote').hidden = lvMode !== 'settings';
+  $('#lvFixed').hidden = !locked;
+  $('.menu-card').classList.toggle('narrow', !!locked);
+  if (locked) $('#lvFixed').innerHTML = `🎯 Deine Übung: <b></b>`, $('#lvFixed b').textContent = describeExercise(settings);
+  ['#modeTabs', '#secMul', '#secAdd', '#countChips', '#countTitle'].forEach(sel => { if (locked) $(sel).style.display = 'none'; });
+  if (locked) $('#poolInfo').textContent = `${settings.count} Aufgaben`;
+  $('#lvChoiceBox').hidden = lvMode !== 'settings';
+  if (lvMode === 'settings') {
+    chipGroup($('#lvChoiceChips'), [
+      { v: false, label: '🔒 Übung fest', sub: 'Kinder rechnen genau diese Übung' },
+      { v: true, label: '🔓 Kinder dürfen ändern', sub: 'Diese Übung ist voreingestellt' },
+    ], v => !!lvTemplate.allowChoice === v, v => { lvTemplate.allowChoice = v; });
+    $('#btnStart').hidden = true;
+    $('#seasonChips').previousElementSibling.textContent = 'Jahreszeit (für dieses Gerät)';
+  }
 }
 function openMenu() {
   if (st.mode === 'busy') return;
@@ -1211,7 +1299,7 @@ function openMenu() {
 [...$('#modeTabs').children].forEach(b => b.onclick = () => { settings.mode = b.dataset.mode; saveSettings(); renderMenu(); });
 $('#allRows').onclick = () => { settings.rows = [1,2,3,4,5,6,7,8,9,10]; saveSettings(); renderMenu(); };
 $('#noRows').onclick = () => { settings.rows = []; saveSettings(); renderMenu(); };
-$('#btnStart').onclick = () => { if (!$('#btnStart').disabled) startGame(makeTasks(settings.count)); };
+$('#btnStart').onclick = () => { if (!$('#btnStart').disabled && !$('#btnStart').hidden) startGame(makeTasks(settings.count)); };
 $('#btnAgain').onclick = () => startGame(makeTasks(settings.count));
 $('#btnBack').onclick = openMenu;
 $('#btnMenu').onclick = openMenu;
@@ -1222,7 +1310,7 @@ $('#btnPractice').onclick = () => {
     { ...m, rep: false },
     m.op === '·' ? { ...m, a: m.b, b: m.a, rep: false } : { ...m, rep: false },
   ]));
-  startGame(tasks);
+  startGame(tasks, true);
 };
 function renderSound() { $('#btnSound').textContent = settings.sound ? '🔊' : '🔇'; }
 $('#btnSound').onclick = () => { settings.sound = !settings.sound; saveSettings(); renderSound(); if (settings.sound) sfx.move(); };
@@ -1230,7 +1318,7 @@ $('#btnSound').onclick = () => { settings.sound = !settings.sound; saveSettings(
 /* ---------- Steuerung ---------- */
 document.addEventListener('keydown', (e) => {
   if (st.mode === 'menu' || st.mode === 'end') {
-    if (e.key === 'Enter' && st.mode === 'menu' && settings.rows.length) { e.preventDefault(); $('#btnStart').click(); }
+    if (e.key === 'Enter' && st.mode === 'menu') { e.preventDefault(); $('#btnStart').click(); }
     return;
   }
   if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); flash('#btnLeft'); }
@@ -1257,7 +1345,217 @@ $('#btnDrop').addEventListener('pointerdown', (e) => { e.preventDefault(); audio
 // Doppeltipp-Zoom auf iOS verhindern
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
+/* ---------- LearningView: Speichern, Ergebnis, Berichte ---------- */
+function describeExercise(s) {
+  if (s.mode === 'mul') {
+    const ops = s.mulOps.length === 2 ? 'Mal & Geteilt' : s.mulOps[0] === 'div' ? 'Geteilt' : 'Mal';
+    const rows = s.rows.length === 10 ? 'alle Reihen' : (s.rows.length === 1 ? `${s.rows[0]}er-Reihe` : `Reihen ${s.rows.join(', ')}`);
+    return `Einmaleins ${ops} · ${rows}`;
+  }
+  const ops = s.addOps.length === 2 ? 'Plus & Minus' : s.addOps[0] === 'minus' ? 'Minus' : 'Plus';
+  let d = `${ops} bis ${s.range}`;
+  if (s.range === 100) d += ' · ' + s.types.map(t => t.replace('+', ' ± ')).join(', ');
+  const crossMatters = s.range === 20 || (s.range === 100 && s.types.some(k => k === 'ZE+E' || k === 'ZE+ZE'));
+  if (crossMatters) d += s.cross.length === 2 ? ' · mit und ohne Zehnerübergang' : ` · ${s.cross[0]} Zehnerübergang`;
+  return d;
+}
+
+// Rundenprotokoll: wird nach jeder aufgeladenen Kiste und am Ende aktualisiert
+function recordRound(done, stars) {
+  if (lvMode !== 'student') return;
+  if (!st.round) {
+    st.round = { t: new Date().toISOString(), ex: (st.practice ? 'Fehler üben: ' : '') + describeExercise(settings),
+      planned: st.queue.length };
+    lvState.rounds.push(st.round);
+  }
+  Object.assign(st.round, {
+    planned: st.queue.length, solved: st.solved, first: st.score, errors: st.errors,
+    wrong: [...st.mistakes.values()].map(m => `${taskText(m)} = ${m.ans}`),
+    sec: Math.round((Date.now() - st.started) / 1000), done: !!done,
+  });
+  if (stars) st.round.stars = stars;
+  lvPersist();
+  // Ergebnis für die Aufgabenkachel: Anteil sofort richtig in der letzten Runde
+  if (st.round.solved) lvSend({ result: { score: { scaled: Math.round(st.round.first / st.round.solved * 100) / 100 } } });
+}
+
+// Speichern nacheinander: erst nach "SAVED" die nächste Anfrage senden
+const saver = { busy: false, dirty: false, timer: null };
+function lvPersist() {
+  if (lvMode !== 'student') return;
+  saver.dirty = true;
+  if (!saver.busy) { clearTimeout(saver.timer); saver.timer = setTimeout(lvFlush, 300); }
+}
+function lvFlush() {
+  if (!saver.dirty || saver.busy) return;
+  saver.dirty = false; saver.busy = true;
+  let data = JSON.stringify(lvState);
+  // sehr alte Runden entfernen, falls der Speicher (1 MiB) knapp wird
+  while (new TextEncoder().encode(data).byteLength > 900000 && lvState.rounds.length > 1) {
+    lvState.rounds.shift(); data = JSON.stringify(lvState);
+  }
+  showSave('Speichere …');
+  lvSend({ type: 'saveAnswerData', data });
+}
+function showSave(text, warn = false) {
+  ['#saveState', '#endSaveState'].forEach(sel => { $(sel).textContent = text; $(sel).classList.toggle('warn', warn); });
+}
+const tplSaver = { busy: false, dirty: false, timer: null };
+function lvSaveTemplate() {
+  tplSaver.dirty = true;
+  clearTimeout(tplSaver.timer);
+  tplSaver.timer = setTimeout(lvFlushTemplate, 600);
+}
+function lvFlushTemplate() {
+  if (!tplSaver.dirty || tplSaver.busy) return;
+  tplSaver.dirty = false; tplSaver.busy = true;
+  showSave('Speichere Einstellungen …');
+  lvSend({ type: 'saveAppTemplate', data: JSON.stringify({ version: 1, settings: lvTemplate.settings || pickKeys(settings, EXERCISE_KEYS), allowChoice: !!lvTemplate.allowChoice }) });
+}
+
+window.addEventListener('message', (event) => {
+  if (!lvMode || event.source !== window.parent || event.origin !== LV_ORIGIN) return;
+  const d = event.data;
+  if (d === 'SAVED') {
+    saver.busy = false; showSave('✓ Gespeichert');
+    if (saver.dirty) saver.timer = setTimeout(lvFlush, 1500);
+  } else if (d && d.type === 'saveAnswerDataError') {
+    saver.busy = false;
+    showSave(d.error === 'ANSWER_DATA_TOO_LARGE' ? 'Nicht gespeichert: zu viele Daten.' : 'Speichern fehlgeschlagen – neuer Versuch …', true);
+    if (d.error !== 'ANSWER_DATA_TOO_LARGE') { saver.dirty = true; saver.timer = setTimeout(lvFlush, 3000); }
+  } else if (d === 'APP_TEMPLATE_SAVED') {
+    tplSaver.busy = false; showSave('✓ Einstellungen gespeichert');
+    if (tplSaver.dirty) lvFlushTemplate();
+  } else if (d && d.type === 'saveAppTemplateError') {
+    tplSaver.busy = false; showSave('Einstellungen nicht gespeichert: ' + d.error, true);
+  } else if (d && d.type === 'sendAppTemplate' && lvMode === 'settings' && d.data) {
+    try { Object.assign(lvTemplate, JSON.parse(d.data)); if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings); renderMenu(); } catch (e) {}
+  } else if (d && d.type === 'sendAnswerData') {
+    let saved = null;
+    if (d.data) { try { saved = JSON.parse(d.data); } catch (e) {} }
+    if (saved && Array.isArray(saved.rounds)) lvState = Object.assign({ version: 1, prefs: {}, rounds: [] }, saved);
+    if (lvMode === 'student') {
+      Object.assign(settings, pickKeys(lvState.prefs || {}, lvLocked() ? PREF_KEYS : [...PREF_KEYS, ...EXERCISE_KEYS]));
+      st.lvLoading = false; applySeason(); renderSound(); renderMenu();
+    } else if (lvMode === 'studentReview') {
+      showStudentReport(lvState.rounds);
+    }
+  } else if (d && d.type === 'classDataConsentPending') {
+    $('#reportBody').innerHTML = '<p class="rempty">Bitte bestätige in LearningView, dass die Klassendaten angezeigt werden dürfen.</p>';
+  } else if (d && d.type === 'sendClassAnswerData' && lvMode === 'class') {
+    showClassReport(d);
+  }
+});
+
+const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+const pct = (r) => r.solved ? Math.round(r.first / r.solved * 100) : null;
+function badge(p) {
+  const s = document.createElement('span');
+  s.className = 'badge ' + (p === null ? 'open' : p >= 90 ? 'good' : p >= 70 ? 'mid' : 'low');
+  s.textContent = p === null ? '–' : p + ' %';
+  return s;
+}
+function cell(tr, content, cls) {
+  const td = document.createElement('td');
+  if (cls) td.className = cls;
+  if (content instanceof Node) td.append(content); else td.textContent = content == null ? '' : String(content);
+  tr.append(td); return td;
+}
+function roundsTable(rounds) {
+  if (!rounds.length) { const p = document.createElement('p'); p.className = 'rempty'; p.textContent = 'Noch keine Runde gespielt.'; return p; }
+  const t = document.createElement('table'); t.className = 'rtable';
+  t.innerHTML = '<thead><tr><th>Datum</th><th>Übung</th><th>Aufgaben</th><th>Fehler</th><th>Sofort richtig</th><th>Dauer</th><th>Falsch gerechnet</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  rounds.slice().reverse().forEach(r => {
+    const tr = document.createElement('tr');
+    cell(tr, fmtDate(r.t));
+    cell(tr, r.ex + (r.done ? '' : ' (abgebrochen)'));
+    cell(tr, `${r.solved || 0} / ${r.planned || 0}`, 'num');
+    cell(tr, r.errors || 0, 'num');
+    cell(tr, badge(pct(r)), 'num');
+    cell(tr, r.sec ? `${Math.floor(r.sec / 60)}:${String(r.sec % 60).padStart(2, '0')} min` : '', 'num');
+    cell(tr, (r.wrong || []).join(' · ') || '–', 'errlist');
+    tb.append(tr);
+  });
+  t.append(tb); return t;
+}
+function summary(rounds) {
+  const s = { rounds: rounds.length, solved: 0, first: 0, errors: 0 };
+  rounds.forEach(r => { s.solved += r.solved || 0; s.first += r.first || 0; s.errors += r.errors || 0; });
+  s.pct = s.solved ? Math.round(s.first / s.solved * 100) : null;
+  return s;
+}
+function openReport(title, sub) {
+  $('#menu').classList.remove('show');
+  $('#reportTitle').textContent = title;
+  $('#reportSub').textContent = sub;
+  $('#report').classList.add('show');
+}
+function showStudentReport(rounds) {
+  const s = summary(rounds);
+  openReport('🏗️ Rechenkran – Lösung', s.rounds
+    ? `${s.rounds} ${s.rounds === 1 ? 'Runde' : 'Runden'} · ${s.solved} Aufgaben · ${s.errors} ${s.errors === 1 ? 'Fehler' : 'Fehler'} · ${s.pct} % sofort richtig`
+    : 'Noch keine Runde gespielt.');
+  $('#reportBody').replaceChildren(roundsTable(rounds));
+}
+function showClassReport(d) {
+  openReport('🏗️ Rechenkran – Klassenübersicht', 'Auf einen Namen tippen, um alle Runden zu sehen.');
+  const body = $('#reportBody');
+  if (d.error) {
+    body.innerHTML = '<p class="rempty"></p>';
+    body.firstChild.textContent = d.error === 'CLASS_DATA_CONSENT_DENIED' ? 'Die Klassendaten wurden nicht freigegeben.'
+      : 'Die Klassenübersicht ist nicht verfügbar. Die Aufgabe braucht die Abgabeform „keine“.';
+    return;
+  }
+  if (!d.data.length) { body.innerHTML = '<p class="rempty">Keine Lernenden im Kurs.</p>'; return; }
+  const t = document.createElement('table'); t.className = 'rtable';
+  t.innerHTML = '<thead><tr><th>Name</th><th>Runden</th><th>Aufgaben</th><th>Fehler</th><th>Sofort richtig</th><th>Zuletzt</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  const rows = d.data.map(stu => {
+    let rounds = [], bad = false;
+    if (stu.data) { try { const o = JSON.parse(stu.data); rounds = Array.isArray(o.rounds) ? o.rounds : []; } catch (e) { bad = true; } }
+    return { stu, rounds, bad };
+  }).sort((a, b) => `${a.stu.surname} ${a.stu.name}`.localeCompare(`${b.stu.surname} ${b.stu.name}`, 'de'));
+  rows.forEach(({ stu, rounds, bad }) => {
+    const s = summary(rounds), last = rounds[rounds.length - 1];
+    const tr = document.createElement('tr'); tr.className = 'click';
+    cell(tr, `${stu.name || ''} ${stu.surname || ''}`.trim() || '(ohne Namen)');
+    if (bad) { cell(tr, 'Ungültiger Speicherstand').colSpan = 5; tb.append(tr); return; }
+    cell(tr, s.rounds, 'num'); cell(tr, s.solved, 'num'); cell(tr, s.errors, 'num'); cell(tr, badge(s.pct), 'num');
+    cell(tr, last ? `${last.ex} (${fmtDate(last.t)})` : 'Noch nicht gespielt');
+    const det = document.createElement('tr'); det.className = 'detail'; det.hidden = true;
+    const td = document.createElement('td'); td.colSpan = 6; td.append(roundsTable(rounds)); det.append(td);
+    tr.onclick = () => { det.hidden = !det.hidden; };
+    tb.append(tr, det);
+  });
+  t.append(tb); body.replaceChildren(t);
+  const again = document.createElement('button'); again.className = 'chip'; again.textContent = '↻ Aktualisieren'; again.style.marginTop = '12px';
+  again.onclick = () => { body.innerHTML = '<p class="rempty">Lade …</p>'; lvSend({ type: 'getClassAnswerData' }); };
+  body.append(again);
+}
+
+function lvInit() {
+  if (!lvMode) return;
+  if (lvMode === 'student') {
+    st.lvLoading = true;
+    lvSend({ type: 'getAnswerData' });
+    // Falls keine Antwort kommt, trotzdem spielen lassen
+    setTimeout(() => { if (st.lvLoading) { st.lvLoading = false; renderMenu(); showSave('Speicherstand konnte nicht geladen werden.', true); } }, 5000);
+  } else if (lvMode === 'studentReview') {
+    openReport('🏗️ Rechenkran – Lösung', 'Lade …');
+    lvSend({ type: 'getAnswerData' });
+  } else if (lvMode === 'class') {
+    lvSend({ type: 'setDialogSize', size: 'max' });
+    openReport('🏗️ Rechenkran – Klassenübersicht', 'Lade …');
+    lvSend({ type: 'getClassAnswerData' });
+  } else if (lvMode === 'settings') {
+    if (!LV || LV.appTemplate === undefined) lvSend({ type: 'getAppTemplate' });
+    if (!lvTemplate.settings) { lvTemplate.settings = pickKeys(settings, EXERCISE_KEYS); lvSaveTemplate(); }
+  }
+}
+
 /* ---------- Start ---------- */
+lvInit();
 applySeason();
 renderSound();
 renderMenu();

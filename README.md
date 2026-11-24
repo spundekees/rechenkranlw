@@ -1,4 +1,4 @@
-# Rechenkran
+# Rechenkran für LearningView
 
 Lernspiel für Grundschulkinder. Am Kran hängt eine Kiste mit einer Rechenaufgabe. Die Kinder fahren den Kran über den Laster mit dem richtigen Ergebnis und setzen die Kiste dort ab.
 
@@ -36,3 +36,24 @@ Fünf Laster fahren vor. Vier davon zeigen die Ergebnisse der nächsten 4 Aufgab
 - Nach zwei Fehlern leuchtet der richtige Laster.
 - Falsch gelöste Aufgaben kommen später noch einmal dran.
 - Am Ende gibt es 1 bis 3 Sterne und den Knopf „Fehler üben“.
+
+## Einbindung in LearningView
+Diese Version ist an die [Embed API von LearningView](https://learningview.org/embed-api.php) angebunden. Außerhalb von LearningView funktioniert sie wie die normale Version, nur ohne Datenübertragung.
+
+**Einrichten**
+1. `index.html` herunterladen und in LearningView als HTML-Inhalt an eine Aufgabe anhängen.
+2. Als Abgabeform der Aufgabe **„keine“** wählen. Sonst stehen Speicherstand und Klassenübersicht nicht zur Verfügung.
+3. Im Aufgaben-Editor auf **„Einstellungen“** klicken und die Übung wählen: Einmaleins (Reihen, Mal/Geteilt) oder Plus & Minus (Zahlenraum, Aufgabenarten, Zehnerübergang) sowie die Anzahl der Aufgaben. Außerdem lässt sich festlegen:
+   - **🔒 Übung fest:** Die Kinder rechnen genau diese Übung.
+   - **🔓 Kinder dürfen ändern:** Die Übung ist voreingestellt, die Kinder können sie anpassen.
+   
+   Die Einstellungen werden automatisch gespeichert und gelten für diese Aufgabe. So lassen sich z. B. verschiedene Aufgaben für verschiedene Niveaus anlegen.
+
+**Was gespeichert wird**
+- Pro Kind jede gespielte Runde: Datum, Übung, Anzahl Aufgaben, Fehler, sofort richtig gelöste Aufgaben, Dauer und die falsch gerechneten Aufgaben.
+- Abgebrochene Runden werden ebenfalls gespeichert und als „abgebrochen“ markiert.
+- An LearningView gemeldet wird der Anteil der sofort richtig gelösten Aufgaben der letzten Runde. Er erscheint als Prozentwert auf der Aufgabenkachel.
+
+**Ansicht für Lehrpersonen**
+- **Einzelne Schülerlösung:** alle Runden des Kindes mit Übung, Fehlern und den falsch gerechneten Aufgaben.
+- **Klassenübersicht** (Aufgabe im Kurs ohne ausgewählte Person öffnen): eine Tabelle mit allen Kindern, nämlich Runden, Aufgaben, Fehler, Anteil sofort richtig und die zuletzt gespielte Übung. Ein Tipp auf einen Namen zeigt alle Runden. LearningView fragt beim ersten Mal um Zustimmung, die Klassendaten anzuzeigen.

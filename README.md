@@ -2,7 +2,7 @@
 
 Lernspiel für Grundschulkinder. Am Kran hängt eine Kiste mit einer Rechenaufgabe. Die Kinder fahren den Kran über den Laster mit dem richtigen Ergebnis und setzen die Kiste dort ab.
 
-**Online spielen:** https://spundekees.github.io/rechenkran/
+**Online spielen:** https://spundekees.github.io/rechenkranlw/
 Offline genügt es, `index.html` im Browser zu öffnen. Es braucht keine Installation und kein Internet.
 
 ## Was man üben kann

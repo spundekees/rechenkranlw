@@ -51,8 +51,6 @@
   .answers { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 2vh, 18px); max-width: min(760px, 125vh); margin: 0 auto; }
   .ans { border: 6px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 22px;
     font-size: calc(clamp(30px, min(8.5vw, 10.5vh), 84px) * var(--k)); line-height: 1.1; font-weight: 700; min-height: calc(clamp(64px, 19vh, 140px) * var(--k)); padding: 6px; }
-  .ans .key { display: block; font-size: 14px; font-weight: 400; margin-top: 2px; }
-  @media (pointer: coarse), (max-height: 560px) { .ans .key { display: none; } }
   .ans.chosen { background: var(--on); color: var(--on-fg); }
   .ans.right { background: #0a7a28; color: #fff; border-color: #0a7a28; }
   .ans.wrong { background: #b00020; color: #fff; border-color: #b00020; }
@@ -305,7 +303,7 @@ function runTask() {
   if (i >= at.tasks.length) return finish();
   const t = at.tasks[i];
   $('#prog').textContent = `${i + 1} / ${at.tasks.length}`;
-  const btns = t.opts.map((v, k) => el('button', { class: 'ans', 'aria-label': `${v}, Taste ${k + 1}`, onclick: () => answer(v, btns[k]) }, String(v), el('span', { class: 'key', 'aria-hidden': 'true' }, `Taste ${k + 1}`)));
+  const btns = t.opts.map((v, k) => el('button', { class: 'ans', 'aria-label': String(v), onclick: () => answer(v, btns[k]) }, String(v)));
   view.replaceChildren(
     el('div', { class: 'task', 'aria-hidden': 'true' }, `${t.a} `, el('span', { class: 'op' }, t.op === ':' ? [el('i'), el('i')] : [el('i')]), ` ${t.b} = ?`),
     el('div', { class: 'answers', role: 'group', 'aria-label': 'Antworten' }, btns),

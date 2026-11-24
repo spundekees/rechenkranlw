@@ -42,7 +42,10 @@
   .big-btn.alt { background: var(--btn); color: var(--btn-fg); }
 
   /* Aufgabe */
-  .task .op { display: inline-block; transform: scale(1.5); margin: 0 .08em; }
+  /* Rechenzeichen als echte runde Punkte (Schriftarten zeichnen sie oft eckig) */
+  .task .op { display: inline-flex; flex-direction: column; justify-content: center; gap: .2em; vertical-align: middle;
+    height: 1em; margin: 0 .18em; position: relative; top: -.06em; }
+  .task .op i { display: block; width: .24em; height: .24em; border-radius: 50%; background: currentColor; }
   /* Größe richtet sich nach Breite UND Höhe, damit alles ohne Scrollen ins LearningView-Fenster passt */
   .task { text-align: center; font-size: calc(clamp(36px, min(12vw, 15vh), 120px) * var(--k)); line-height: 1.1; font-weight: 700; margin: 2vh 0 3vh; letter-spacing: 2px; }
   .answers { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 2vh, 18px); max-width: min(760px, 125vh); margin: 0 auto; }
@@ -304,7 +307,7 @@ function runTask() {
   $('#prog').textContent = `${i + 1} / ${at.tasks.length}`;
   const btns = t.opts.map((v, k) => el('button', { class: 'ans', 'aria-label': `${v}, Taste ${k + 1}`, onclick: () => answer(v, btns[k]) }, String(v), el('span', { class: 'key', 'aria-hidden': 'true' }, `Taste ${k + 1}`)));
   view.replaceChildren(
-    el('div', { class: 'task', 'aria-hidden': 'true' }, `${t.a} `, el('span', { class: 'op' }, t.op), ` ${t.b} = ?`),
+    el('div', { class: 'task', 'aria-hidden': 'true' }, `${t.a} `, el('span', { class: 'op' }, t.op === ':' ? [el('i'), el('i')] : [el('i')]), ` ${t.b} = ?`),
     el('div', { class: 'answers', role: 'group', 'aria-label': 'Antworten' }, btns),
     el('div', { class: 'fb', id: 'fb', 'aria-live': 'polite' }),
   );

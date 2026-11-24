@@ -52,6 +52,7 @@ Diese Version ist an die [Embed API von LearningView](https://learningview.org/e
 **Was gespeichert wird**
 - Pro Kind jede gespielte Runde: Datum, Übung, Anzahl Aufgaben, Fehler, sofort richtig gelöste Aufgaben, Dauer und die falsch gerechneten Aufgaben.
 - Abgebrochene Runden werden ebenfalls gespeichert und als „abgebrochen“ markiert.
+- Die Jahreszeit richtet sich in LearningView immer automatisch nach dem Datum. Die Kinder können sie nicht auswählen.
 - An LearningView gemeldet wird der Anteil der sofort richtig gelösten Aufgaben der letzten Runde. Er erscheint als Prozentwert auf der Aufgabenkachel.
 
 **Ansicht für Lehrpersonen**

@@ -524,7 +524,9 @@ let lvState = { version: 1, prefs: {}, rounds: [] };
 
 if (!lvMode) { try { Object.assign(settings, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) {} }
 if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings);
-const PREF_KEYS = ['season', 'sound'];
+const PREF_KEYS = ['sound'];
+// In LearningView gibt es keine Jahreszeiten-Auswahl: immer automatisch nach Datum
+if (lvMode) settings.season = 'auto';
 const EXERCISE_KEYS = ['mode', 'rows', 'mulOps', 'range', 'addOps', 'cross', 'types', 'count'];
 const pickKeys = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
 const saveSettings = () => {
@@ -1279,13 +1281,13 @@ function renderMenu() {
   ['#modeTabs', '#secMul', '#secAdd', '#countChips', '#countTitle'].forEach(sel => { if (locked) $(sel).style.display = 'none'; });
   if (locked) $('#poolInfo').textContent = `${settings.count} Aufgaben`;
   $('#lvChoiceBox').hidden = lvMode !== 'settings';
+  if (lvMode) { $('#seasonChips').style.display = 'none'; $('#seasonChips').previousElementSibling.style.display = 'none'; }
   if (lvMode === 'settings') {
     chipGroup($('#lvChoiceChips'), [
       { v: false, label: '🔒 Übung fest', sub: 'Kinder rechnen genau diese Übung' },
       { v: true, label: '🔓 Kinder dürfen ändern', sub: 'Diese Übung ist voreingestellt' },
     ], v => !!lvTemplate.allowChoice === v, v => { lvTemplate.allowChoice = v; });
     $('#btnStart').hidden = true;
-    $('#seasonChips').previousElementSibling.textContent = 'Jahreszeit (für dieses Gerät)';
   }
 }
 function openMenu() {
@@ -1436,6 +1438,7 @@ window.addEventListener('message', (event) => {
     if (saved && Array.isArray(saved.rounds)) lvState = Object.assign({ version: 1, prefs: {}, rounds: [] }, saved);
     if (lvMode === 'student') {
       Object.assign(settings, pickKeys(lvState.prefs || {}, lvLocked() ? PREF_KEYS : [...PREF_KEYS, ...EXERCISE_KEYS]));
+      settings.season = 'auto';
       st.lvLoading = false; applySeason(); renderSound(); renderMenu();
     } else if (lvMode === 'studentReview') {
       showStudentReport(lvState.rounds);

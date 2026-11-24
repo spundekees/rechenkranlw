@@ -84,4 +84,6 @@ Ein schlichter Einmaleins-Test mit großen Antwortknöpfen und hohem Kontrast, g
 - **Klassenübersicht:** Kinder × Reihen als farbige Tabelle (grün ab 90 %, gelb 70–89 %, rot unter 70 %) mit Gesamtwert, Zeit und Datum, dazu eine Zeile „Klasse“ und die häufigsten Fehler in der Klasse. Ein Tipp auf einen Namen öffnet die Einzelauswertung.
 - An die Aufgabenkachel wird der Anteil richtiger Antworten gemeldet.
 
+📄 **Anleitung für Lehrkräfte (PDF):** [Anleitung-Einmaleins-Test.pdf](Anleitung-Einmaleins-Test.pdf)
+
 Die Einrichtung ist gleich wie beim Rechenkran: Datei an eine Aufgabe anhängen, Abgabeform **„keine“** wählen, dann über „Einstellungen“ den Test festlegen. Direkt geöffnet (ohne LearningView) erscheinen erst die Einstellungen, dann kann man den Test ohne Speichern ausprobieren.

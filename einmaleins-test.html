@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="learningview-settings" content="1">
+<title>Einmaleins-Test</title>
+<style>
+  /* Hoher Kontrast, große Schrift, keine Animationen */
+  :root {
+    --bg: #ffffff; --fg: #000000; --line: #000000; --muted: #1f1f1f;
+    --btn: #ffffff; --btn-fg: #000000; --on: #000000; --on-fg: #ffffff;
+    --focus: #0050ff; --good: #b7f5c4; --mid: #fff09a; --low: #ffc2c2;
+    --k: 1;
+    font-family: Verdana, "Atkinson Hyperlegible", Arial, sans-serif;
+  }
+  :root.dark {
+    --bg: #000000; --fg: #ffe600; --line: #ffe600; --muted: #ffe600;
+    --btn: #000000; --btn-fg: #ffe600; --on: #ffe600; --on-fg: #000000; --focus: #ffffff;
+  }
+  :root.big { --k: 1.3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); }
+  body { min-height: 100vh; }
+  body { -webkit-text-size-adjust: 100%; }
+  button { font-family: inherit; cursor: pointer; touch-action: manipulation; }
+  button:focus-visible { outline: 6px solid var(--focus); outline-offset: 4px; }
+
+  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 4px solid var(--line); }
+  .bar h1 { font-size: calc(22px * var(--k)); margin: 0; flex: 1; }
+  .bar .prog { font-size: calc(22px * var(--k)); font-weight: 700; white-space: nowrap; }
+  .tool { border: 3px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 10px;
+    font-size: 18px; font-weight: 700; padding: 8px 12px; min-width: 52px; }
+  .tool[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
+
+  main { padding: 16px; max-width: 1000px; margin: 0 auto; }
+  .center { text-align: center; }
+  h2 { font-size: calc(28px * var(--k)); margin: 18px 0 10px; }
+  p, li { font-size: calc(22px * var(--k)); line-height: 1.45; }
+  .big-btn { display: block; width: min(560px, 100%); margin: 22px auto 0; border: 6px solid var(--line);
+    background: var(--on); color: var(--on-fg); border-radius: 18px; font-size: calc(36px * var(--k)); font-weight: 700; padding: 18px 20px; }
+  .big-btn.alt { background: var(--btn); color: var(--btn-fg); }
+
+  /* Aufgabe */
+  .task .op { display: inline-block; transform: scale(1.5); margin: 0 .08em; }
+  .task { text-align: center; font-size: calc(clamp(64px, 16vw, 150px) * var(--k)); font-weight: 700; margin: 3vh 0 4vh; letter-spacing: 2px; }
+  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 820px; margin: 0 auto; }
+  .ans { border: 6px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 22px;
+    font-size: calc(clamp(48px, 11vw, 96px) * var(--k)); font-weight: 700; min-height: calc(120px * var(--k)); padding: 10px; }
+  .ans .key { display: block; font-size: 16px; font-weight: 400; margin-top: 2px; }
+  .ans.chosen { background: var(--on); color: var(--on-fg); }
+  .ans.right { background: #0a7a28; color: #fff; border-color: #0a7a28; }
+  .ans.wrong { background: #b00020; color: #fff; border-color: #b00020; }
+  .ans:disabled { cursor: default; }
+  .fb { text-align: center; font-size: calc(30px * var(--k)); font-weight: 700; min-height: 1.6em; margin-top: 14px; }
+
+  /* Ergebnis für das Kind */
+  .reslist { list-style: none; padding: 0; max-width: 620px; margin: 0 auto; }
+  .reslist li { display: flex; justify-content: space-between; border-bottom: 3px solid var(--line); padding: 10px 4px; font-weight: 700; }
+
+  /* Einstellungen */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { border: 4px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 14px;
+    font-size: calc(22px * var(--k)); font-weight: 700; padding: 10px 16px; min-width: 64px; }
+  .chip[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
+  .chip small { display: block; font-size: 14px; font-weight: 400; }
+  .note { border: 3px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 18px; margin: 10px 0; }
+  .status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
+  .warn { color: #b00020; } :root.dark .warn { color: #ff8a8a; }
+
+  /* Auswertung für Lehrpersonen (normal groß) */
+  .rep { font-size: 15px; }
+  .rep h2 { font-size: 22px; }
+  .rep p { font-size: 16px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { border: 2px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--on); color: var(--on-fg); }
+  td.c { text-align: center; white-space: nowrap; font-weight: 700; color: #000; }
+  td.good { background: var(--good); } td.mid { background: var(--mid); } td.low { background: var(--low); }
+  td.none { color: inherit; font-weight: 400; }
+  tr.click { cursor: pointer; } tr.click td:first-child { text-decoration: underline; }
+  tr.detail td { padding: 12px; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 14px; margin: 8px 0; }
+  .legend span { border: 2px solid var(--line); padding: 2px 8px; color: #000; }
+  .scroll { overflow-x: auto; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>1 · 1 Test</h1>
+  <span class="prog" id="prog" aria-live="polite"></span>
+  <button class="tool" id="btnContrast" aria-pressed="false" title="Gelb auf Schwarz">Dunkel</button>
+  <button class="tool" id="btnBig" aria-pressed="false" title="Größere Schrift">A+ Größer</button>
+</div>
+<main id="view"></main>
+<div class="sr" id="say" aria-live="assertive"></div>
+
+<script>
+'use strict';
+/* ---------- Hilfen ---------- */
+const $ = (s) => document.querySelector(s);
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  kids.flat().forEach(c => e.append(c instanceof Node ? c : document.createTextNode(String(c))));
+  return e;
+};
+const view = $('#view');
+const OPS = { mul: '·', div: ':' };
+const opWord = { '·': 'mal', ':': 'geteilt durch' };
+
+/* ---------- LearningView ---------- */
+const LV_ORIGIN = 'https://learningview.org';
+const IN_FRAME = window.parent !== window;
+const LV = window.learningView || null;
+const lvMode = LV && LV.mode ? LV.mode : (IN_FRAME ? 'student' : null);   // null = eigenständig
+const lvSend = (m) => { if (IN_FRAME) window.parent.postMessage(m, LV_ORIGIN); };
+
+// Einstellungen der Lehrperson (appTemplate)
+const DEFAULT_CFG = { version: 1, rows: [1,2,3,4,5,6,7,8,9,10], ops: ['mul'], perRow: 10, attempts: 'multi', showResult: true, feedback: false };
+let cfg = { ...DEFAULT_CFG };
+let cfgSet = false;
+function loadCfg(text) {
+  if (!text) return;
+  try { const o = JSON.parse(text); if (o && Array.isArray(o.rows)) { cfg = { ...DEFAULT_CFG, ...o }; cfgSet = true; } } catch (e) {}
+}
+loadCfg(LV && LV.appTemplate);
+
+// Daten des Kindes: { version, prefs: {dark, big}, attempts: [{ t, rows, ops, tasks:[…], answers:[{given, ms}], done }] }
+let data = { version: 1, prefs: {}, attempts: [] };
+
+/* ---------- Ansicht: Kontrast und Größe ---------- */
+function applyPrefs() {
+  document.documentElement.classList.toggle('dark', !!data.prefs.dark);
+  document.documentElement.classList.toggle('big', !!data.prefs.big);
+  $('#btnContrast').textContent = data.prefs.dark ? 'Hell' : 'Dunkel';
+  $('#btnContrast').setAttribute('aria-pressed', !!data.prefs.dark);
+  $('#btnBig').setAttribute('aria-pressed', !!data.prefs.big);
+}
+$('#btnContrast').onclick = () => { data.prefs.dark = !data.prefs.dark; applyPrefs(); persist(); };
+$('#btnBig').onclick = () => { data.prefs.big = !data.prefs.big; applyPrefs(); persist(); };
+
+/* ---------- Aufgaben ---------- */
+function makeTasks(c) {
+  const tasks = [];
+  c.rows.forEach(r => {
+    const ks = shuffle([1,2,3,4,5,6,7,8,9,10]).slice(0, c.perRow);
+    ks.forEach(k => {
+      if (c.ops.includes('mul')) tasks.push(Math.random() < .5 ? { a: r, op: '·', b: k, ans: r * k, row: r } : { a: k, op: '·', b: r, ans: r * k, row: r });
+      if (c.ops.includes('div')) tasks.push({ a: r * k, op: ':', b: r, ans: k, row: r });
+    });
+  });
+  shuffle(tasks);
+  // gleiche Ergebnisse nicht direkt hintereinander
+  for (let i = 1; i < tasks.length; i++) if (tasks[i].ans === tasks[i - 1].ans) {
+    const j = tasks.findIndex((t, k) => k > i && t.ans !== tasks[i - 1].ans);
+    if (j > 0) [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
+  }
+  tasks.forEach(t => t.opts = makeOptions(t));
+  return tasks;
+}
+function makeOptions(t) {
+  const ans = t.ans, set = new Set([ans]);
+  let near;
+  if (t.op === '·') near = [t.a * (t.b + 1), t.a * (t.b - 1), (t.a + 1) * t.b, (t.a - 1) * t.b, ans + 1, ans - 1, ans + 10, ans - 10];
+  else near = [ans + 1, ans - 1, ans + 2, ans - 2, t.b];
+  const max = t.op === '·' ? 100 : 10, min = t.op === '·' ? 0 : 1;
+  for (const n of shuffle(near)) { if (set.size >= 4) break; if (Number.isInteger(n) && n >= min && n <= max && n !== ans) set.add(n); }
+  for (let n = min; set.size < 4; n++) set.add(n);
+  return [...set].sort((x, y) => x - y);   // aufsteigend: leichter zu finden
+}
+const taskText = (t) => `${t.a} ${t.op} ${t.b}`;
+const countFor = (c) => c.rows.length * c.perRow * c.ops.length;
+
+/* ---------- Speichern (nacheinander, auf "SAVED" warten) ---------- */
+const saver = { busy: false, dirty: false, timer: null };
+function persist() {
+  if (lvMode !== 'student') return;
+  saver.dirty = true;
+  if (!saver.busy) { clearTimeout(saver.timer); saver.timer = setTimeout(flush, 200); }
+}
+function flush() {
+  if (!saver.dirty || saver.busy) return;
+  saver.dirty = false; saver.busy = true;
+  lvSend({ type: 'saveAnswerData', data: JSON.stringify(data) });
+}
+const tplSaver = { busy: false, dirty: false, timer: null };
+function saveCfg() {
+  if (lvMode !== 'settings') return;
+  tplSaver.dirty = true; clearTimeout(tplSaver.timer); tplSaver.timer = setTimeout(flushCfg, 500);
+}
+function flushCfg() {
+  if (!tplSaver.dirty || tplSaver.busy) return;
+  tplSaver.dirty = false; tplSaver.busy = true;
+  setStatus('Speichere …');
+  lvSend({ type: 'saveAppTemplate', data: JSON.stringify(cfg) });
+}
+function setStatus(text, warn) { const s = $('#status'); if (s) { s.textContent = text; s.classList.toggle('warn', !!warn); } }
+
+window.addEventListener('message', (event) => {
+  if (!lvMode || event.source !== window.parent || event.origin !== LV_ORIGIN) return;
+  const d = event.data;
+  if (d === 'SAVED') { saver.busy = false; setStatus('✓ Gespeichert'); if (saver.dirty) saver.timer = setTimeout(flush, 1500); }
+  else if (d && d.type === 'saveAnswerDataError') {
+    saver.busy = false; setStatus('Speichern fehlgeschlagen – neuer Versuch …', true);
+    if (d.error !== 'ANSWER_DATA_TOO_LARGE') { saver.dirty = true; saver.timer = setTimeout(flush, 3000); }
+  }
+  else if (d === 'APP_TEMPLATE_SAVED') { tplSaver.busy = false; setStatus('✓ Einstellungen gespeichert'); if (tplSaver.dirty) flushCfg(); }
+  else if (d && d.type === 'saveAppTemplateError') { tplSaver.busy = false; setStatus('Nicht gespeichert: ' + d.error, true); }
+  else if (d && d.type === 'sendAppTemplate') { loadCfg(d.data); if (lvMode === 'settings') showSettings(); }
+  else if (d && d.type === 'sendAnswerData') {
+    if (d.data) { try { const o = JSON.parse(d.data); if (o && Array.isArray(o.attempts)) data = { version: 1, prefs: {}, ...o }; } catch (e) {} }
+    applyPrefs();
+    if (lvMode === 'student') showStart(); else if (lvMode === 'studentReview') showStudentReport();
+  }
+  else if (d && d.type === 'classDataConsentPending') {
+    view.replaceChildren(el('p', { class: 'center' }, 'Bitte in LearningView bestätigen, dass die Klassendaten angezeigt werden dürfen.'));
+  }
+  else if (d && d.type === 'sendClassAnswerData' && lvMode === 'class') showClassReport(d);
+});
+
+/* ---------- Einstellungen (Lehrperson bzw. eigenständig) ---------- */
+function chipRow(items, isOn, onClick) {
+  return el('div', { class: 'chips' }, items.map(it => el('button', {
+    class: 'chip', 'aria-pressed': isOn(it.v) ? 'true' : 'false',
+    onclick: () => { onClick(it.v); saveCfg(); showSettings(); }
+  }, it.label, it.sub ? el('small', {}, it.sub) : '')));
+}
+const toggleIn = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v].sort((a, b) => a - b);
+function showSettings() {
+  $('#prog').textContent = '';
+  const n = countFor(cfg);
+  const ok = cfg.rows.length && cfg.ops.length;
+  const kids = [];
+  if (lvMode === 'settings') kids.push(el('div', { class: 'note' }, '⚙️ Einstellungen für diese Aufgabe. Alles wird automatisch gespeichert.'));
+  kids.push(
+    el('h2', {}, 'Reihen'),
+    chipRow([1,2,3,4,5,6,7,8,9,10].map(r => ({ v: r, label: r })), v => cfg.rows.includes(v), v => { cfg.rows = toggleIn(cfg.rows, v); }),
+    el('div', { class: 'chips', style: 'margin-top:10px' },
+      el('button', { class: 'chip', onclick: () => { cfg.rows = [1,2,3,4,5,6,7,8,9,10]; saveCfg(); showSettings(); } }, 'Alle'),
+      el('button', { class: 'chip', onclick: () => { cfg.rows = []; saveCfg(); showSettings(); } }, 'Keine')),
+    el('h2', {}, 'Rechenart'),
+    chipRow([{ v: 'mul', label: 'Mal ·' }, { v: 'div', label: 'Geteilt :' }], v => cfg.ops.includes(v), v => { cfg.ops = cfg.ops.includes(v) ? cfg.ops.filter(x => x !== v) : [...cfg.ops, v]; }),
+    el('h2', {}, 'Aufgaben je Reihe'),
+    chipRow([{ v: 10, label: 'alle 10' }, { v: 5, label: '5 zufällige' }, { v: 3, label: '3 zufällige' }], v => cfg.perRow === v, v => { cfg.perRow = v; }),
+  );
+  if (lvMode === 'settings') kids.push(
+    el('h2', {}, 'Wie oft?'),
+    chipRow([{ v: 'once', label: 'einmal' }, { v: 'multi', label: 'beliebig oft' }], v => cfg.attempts === v, v => { cfg.attempts = v; }),
+  );
+  kids.push(
+    el('h2', {}, 'Rückmeldung für das Kind'),
+    chipRow([{ v: false, label: 'keine', sub: 'echter Test' }, { v: true, label: 'nach jeder Aufgabe', sub: 'richtig / falsch' }], v => cfg.feedback === v, v => { cfg.feedback = v; }),
+    el('div', { style: 'margin-top:10px' }, chipRow([{ v: true, label: 'Ergebnis am Ende zeigen' }, { v: false, label: 'Ergebnis nicht zeigen' }], v => cfg.showResult === v, v => { cfg.showResult = v; })),
+    el('p', { class: ok ? '' : 'warn' }, ok ? `Der Test hat ${n} Aufgaben.` : 'Bitte mindestens eine Reihe und eine Rechenart wählen.'),
+    el('p', { class: 'status', id: 'status' }),
+  );
+  if (!lvMode) kids.push(el('button', { class: 'big-btn', disabled: !ok, onclick: () => startAttempt() }, 'Test starten ▶'));
+  view.replaceChildren(...kids);
+}
+
+/* ---------- Ablauf für das Kind ---------- */
+const lastAttempt = () => data.attempts[data.attempts.length - 1];
+function showStart() {
+  $('#prog').textContent = '';
+  const last = lastAttempt();
+  const kids = [];
+  if (lvMode && !cfgSet && lvMode !== 'preview') {
+    view.replaceChildren(el('p', { class: 'center' }, 'Dieser Test ist noch nicht eingerichtet.'));
+    return;
+  }
+  if (last && !last.done) {
+    kids.push(el('h2', { class: 'center' }, 'Du hast schon angefangen.'),
+      el('p', { class: 'center' }, `${last.answers.length} von ${last.tasks.length} Aufgaben sind fertig.`),
+      el('button', { class: 'big-btn', onclick: () => runTask() }, 'Weitermachen ▶'));
+  } else if (last && cfg.attempts === 'once' && lvMode === 'student') {
+    kids.push(el('h2', { class: 'center' }, 'Du hast den Test schon gemacht. 👍'));
+    if (cfg.showResult) kids.push(resultList(last));
+  } else {
+    kids.push(el('h2', { class: 'center' }, 'Einmaleins-Test'),
+      el('p', { class: 'center' }, `${countFor(cfg)} Aufgaben. Tippe immer auf das richtige Ergebnis.`),
+      el('p', { class: 'center' }, 'Du kannst dir Zeit lassen.'),
+      el('button', { class: 'big-btn', onclick: () => startAttempt() }, 'Start ▶'));
+  }
+  view.replaceChildren(...kids);
+  const b = view.querySelector('.big-btn'); if (b) b.focus();
+}
+function startAttempt() {
+  data.attempts.push({ t: new Date().toISOString(), rows: cfg.rows.slice(), ops: cfg.ops.slice(), tasks: makeTasks(cfg), answers: [], done: false });
+  persist();
+  runTask();
+}
+let shownAt = 0, locked = false;
+function runTask() {
+  const at = lastAttempt(), i = at.answers.length;
+  if (i >= at.tasks.length) return finish();
+  const t = at.tasks[i];
+  $('#prog').textContent = `${i + 1} / ${at.tasks.length}`;
+  const btns = t.opts.map((v, k) => el('button', { class: 'ans', 'aria-label': `${v}, Taste ${k + 1}`, onclick: () => answer(v, btns[k]) }, String(v), el('span', { class: 'key', 'aria-hidden': 'true' }, `Taste ${k + 1}`)));
+  view.replaceChildren(
+    el('div', { class: 'task', 'aria-hidden': 'true' }, `${t.a} `, el('span', { class: 'op' }, t.op), ` ${t.b} = ?`),
+    el('div', { class: 'answers', role: 'group', 'aria-label': 'Antworten' }, btns),
+    el('div', { class: 'fb', id: 'fb', 'aria-live': 'polite' }),
+  );
+  $('#say').textContent = `Aufgabe ${i + 1}: ${t.a} ${opWord[t.op]} ${t.b}`;
+  shownAt = performance.now(); locked = false;
+  btns[0].focus({ preventScroll: true });
+}
+function answer(v, btn) {
+  if (locked) return;
+  locked = true;
+  const at = lastAttempt(), t = at.tasks[at.answers.length];
+  at.answers.push({ given: v, ms: Math.round(performance.now() - shownAt) });
+  persist();
+  view.querySelectorAll('.ans').forEach(b => b.disabled = true);
+  if (cfg.feedback) {
+    const ok = v === t.ans;
+    btn.classList.add(ok ? 'right' : 'wrong');
+    if (!ok) view.querySelectorAll('.ans').forEach(b => { if (Number(b.firstChild.textContent) === t.ans) b.classList.add('right'); });
+    $('#fb').textContent = ok ? '✓ Richtig!' : `✗ ${taskText(t)} = ${t.ans}`;
+    setTimeout(runTask, ok ? 900 : 2200);
+  } else {
+    btn.classList.add('chosen');
+    setTimeout(runTask, 350);
+  }
+}
+document.addEventListener('keydown', (e) => {
+  const n = Number(e.key);
+  if (n >= 1 && n <= 4) { const b = view.querySelectorAll('.ans')[n - 1]; if (b && !b.disabled) b.click(); }
+});
+
+function evaluate(at) {
+  // je Reihe und Rechenart: richtig / gesamt / Zeiten / Fehler
+  const rows = {};
+  at.tasks.forEach((t, i) => {
+    const a = at.answers[i]; if (!a) return;
+    const r = rows[t.row] = rows[t.row] || { mul: [0, 0], div: [0, 0], ms: [], wrong: [] };
+    const k = t.op === '·' ? 'mul' : 'div', ok = a.given === t.ans;
+    r[k][1]++; if (ok) r[k][0]++;
+    r.ms.push(a.ms);
+    if (!ok) r.wrong.push(`${taskText(t)} → ${a.given}`);
+  });
+  let right = 0, total = 0;
+  Object.values(rows).forEach(r => { right += r.mul[0] + r.div[0]; total += r.mul[1] + r.div[1]; });
+  return { rows, right, total, pct: total ? Math.round(right / total * 100) : null };
+}
+const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const sec = (ms) => ms == null ? '–' : (ms / 1000).toFixed(1).replace('.', ',') + ' s';
+const level = (r, n) => !n ? 'none' : r / n >= .9 ? 'good' : r / n >= .7 ? 'mid' : 'low';
+
+function resultList(at) {
+  const ev = evaluate(at);
+  return el('div', {},
+    el('p', { class: 'center' }, `${ev.right} von ${ev.total} richtig`),
+    el('ul', { class: 'reslist' }, Object.keys(ev.rows).sort((a, b) => a - b).map(row => {
+      const r = ev.rows[row];
+      return el('li', {}, el('span', {}, `${row}er-Reihe`), el('span', {}, `${r.mul[0] + r.div[0]} von ${r.mul[1] + r.div[1]}`));
+    })));
+}
+function finish() {
+  const at = lastAttempt();
+  at.done = true;
+  const ev = evaluate(at);
+  persist();
+  if (ev.total) lvSend({ result: { score: { raw: ev.right, max: ev.total } } });
+  $('#prog').textContent = '';
+  const kids = [el('h2', { class: 'center' }, 'Fertig! 🎉'), el('p', { class: 'center' }, 'Danke, dein Test ist abgegeben.')];
+  if (cfg.showResult) kids.push(resultList(at));
+  if (cfg.attempts !== 'once' || !lvMode) kids.push(el('button', { class: 'big-btn alt', onclick: () => lvMode ? startAttempt() : showSettings() }, 'Noch einmal'));
+  kids.push(el('p', { class: 'status center', id: 'status' }));
+  view.replaceChildren(...kids);
+  $('#say').textContent = `Fertig. ${ev.right} von ${ev.total} richtig.`;
+}
+
+/* ---------- Auswertung für Lehrpersonen ---------- */
+const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+function scoreCell(r, n, cls = '') {
+  return el('td', { class: `c ${level(r, n)} ${cls}` }, n ? `${r}/${n}` : '–');
+}
+function attemptTable(at) {
+  const ev = evaluate(at);
+  const hasMul = at.ops.includes('mul'), hasDiv = at.ops.includes('div');
+  const head = el('tr', {}, el('th', {}, 'Reihe'), hasMul ? el('th', {}, 'Mal') : '', hasDiv ? el('th', {}, 'Geteilt') : '',
+    el('th', {}, 'Zeit (Median)'), el('th', {}, 'Fehler (Aufgabe → Antwort)'));
+  const body = Object.keys(ev.rows).sort((a, b) => a - b).map(row => {
+    const r = ev.rows[row];
+    return el('tr', {}, el('td', {}, `${row}er-Reihe`), hasMul ? scoreCell(r.mul[0], r.mul[1]) : '', hasDiv ? scoreCell(r.div[0], r.div[1]) : '',
+      el('td', { class: 'c none' }, sec(median(r.ms))), el('td', {}, r.wrong.join(' · ') || '–'));
+  });
+  return el('div', {},
+    el('p', {}, el('strong', {}, `${fmtDate(at.t)} · ${ev.right} von ${ev.total} richtig (${ev.pct ?? 0} %)`),
+      at.done ? '' : ` · nicht beendet (${at.answers.length} von ${at.tasks.length} Aufgaben)`),
+    el('div', { class: 'scroll' }, el('table', {}, el('thead', {}, head), el('tbody', {}, body))));
+}
+const legend = () => el('div', { class: 'legend' },
+  el('span', { style: 'background:var(--good)' }, 'ab 90 % richtig'), el('span', { style: 'background:var(--mid)' }, '70–89 %'), el('span', { style: 'background:var(--low)' }, 'unter 70 %'));
+
+function showStudentReport() {
+  $('#prog').textContent = '';
+  const box = el('div', { class: 'rep' }, el('h2', {}, 'Auswertung nach Reihen'));
+  if (!data.attempts.length) box.append(el('p', {}, 'Noch kein Test gemacht.'));
+  else { box.append(legend()); data.attempts.slice().reverse().forEach(at => box.append(attemptTable(at))); }
+  view.replaceChildren(box);
+}
+
+// Für die Klasse zählt je Kind der letzte beendete Versuch (sonst der letzte angefangene)
+function chosenAttempt(attempts) {
+  for (let i = attempts.length - 1; i >= 0; i--) if (attempts[i].done) return attempts[i];
+  return attempts[attempts.length - 1] || null;
+}
+function showClassReport(d) {
+  main_wide();
+  const box = el('div', { class: 'rep' }, el('h2', {}, 'Klassenübersicht nach Reihen'));
+  if (d.error) {
+    box.append(el('p', {}, d.error === 'CLASS_DATA_CONSENT_DENIED' ? 'Die Klassendaten wurden nicht freigegeben.'
+      : 'Die Klassenübersicht ist nicht verfügbar. Die Aufgabe braucht die Abgabeform „keine“.'));
+    return view.replaceChildren(box);
+  }
+  const kids = d.data.map(s => {
+    let attempts = [], bad = false;
+    if (s.data) { try { const o = JSON.parse(s.data); attempts = Array.isArray(o.attempts) ? o.attempts : []; } catch (e) { bad = true; } }
+    const at = chosenAttempt(attempts);
+    return { s, attempts, bad, at, ev: at ? evaluate(at) : null };
+  }).sort((a, b) => `${a.s.surname} ${a.s.name}`.localeCompare(`${b.s.surname} ${b.s.name}`, 'de'));
+  const rowSet = new Set(cfgSet ? cfg.rows : []);
+  kids.forEach(k => k.ev && Object.keys(k.ev.rows).forEach(r => rowSet.add(Number(r))));
+  const rows = [...rowSet].sort((a, b) => a - b);
+  if (!kids.length) { box.append(el('p', {}, 'Keine Lernenden im Kurs.')); return view.replaceChildren(box); }
+
+  box.append(el('p', {}, 'Je Kind zählt der letzte beendete Test. Auf einen Namen tippen, um die Einzelauswertung zu sehen.'), legend());
+  const head = el('tr', {}, el('th', {}, 'Name'), rows.map(r => el('th', {}, `${r}er`)), el('th', {}, 'Gesamt'), el('th', {}, 'Zeit'), el('th', {}, 'Stand'));
+  const tb = el('tbody');
+  const sums = Object.fromEntries(rows.map(r => [r, [0, 0]]));
+  const wrongCount = {};
+  kids.forEach(k => {
+    const name = `${k.s.name || ''} ${k.s.surname || ''}`.trim() || '(ohne Namen)';
+    const tr = el('tr', { class: 'click', tabindex: '0' }, el('td', {}, name));
+    if (k.bad || !k.ev) {
+      tr.append(el('td', { colspan: rows.length + 3, class: 'c none' }, k.bad ? 'Ungültiger Speicherstand' : 'Noch nicht gemacht'));
+      tr.classList.remove('click'); tb.append(tr); return;
+    }
+    const allMs = [];
+    rows.forEach(r => {
+      const x = k.ev.rows[r];
+      if (!x) return tr.append(el('td', { class: 'c none' }, '–'));
+      const right = x.mul[0] + x.div[0], n = x.mul[1] + x.div[1];
+      sums[r][0] += right; sums[r][1] += n; allMs.push(...x.ms);
+      x.wrong.forEach(w => { const key = w.split(' → ')[0]; wrongCount[key] = (wrongCount[key] || 0) + 1; });
+      tr.append(scoreCell(right, n));
+    });
+    tr.append(scoreCell(k.ev.right, k.ev.total), el('td', { class: 'c none' }, sec(median(allMs))),
+      el('td', {}, k.at.done ? fmtDate(k.at.t) : `angefangen (${k.at.answers.length}/${k.at.tasks.length})`));
+    const det = el('tr', { class: 'detail', hidden: true }, el('td', { colspan: rows.length + 4 }, k.attempts.slice().reverse().map(attemptTable)));
+    const toggle = () => { det.hidden = !det.hidden; };
+    tr.onclick = toggle; tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+    tb.append(tr, det);
+  });
+  const tot = rows.reduce((a, r) => [a[0] + sums[r][0], a[1] + sums[r][1]], [0, 0]);
+  tb.append(el('tr', {}, el('td', {}, el('strong', {}, 'Klasse')), rows.map(r => scoreCell(sums[r][0], sums[r][1])), scoreCell(tot[0], tot[1]), el('td'), el('td')));
+  box.append(el('div', { class: 'scroll' }, el('table', {}, el('thead', {}, head), tb)));
+
+  const top = Object.entries(wrongCount).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  box.append(el('h2', {}, 'Häufigste Fehler in der Klasse'),
+    el('p', {}, top.length ? top.map(([k, n]) => `${k} (${n} ${n === 1 ? 'Kind' : 'Kinder'})`).join(' · ') : 'Keine Fehler.'),
+    el('button', { class: 'chip', onclick: () => { view.replaceChildren(el('p', {}, 'Lade …')); lvSend({ type: 'getClassAnswerData' }); } }, '↻ Aktualisieren'));
+  view.replaceChildren(box);
+}
+function main_wide() { view.style.maxWidth = '1400px'; }
+
+/* ---------- Start ---------- */
+applyPrefs();
+if (!lvMode) showSettings();
+else if (lvMode === 'settings') {
+  if (!LV || LV.appTemplate === undefined) lvSend({ type: 'getAppTemplate' });
+  showSettings();
+  if (!cfgSet) { cfgSet = true; saveCfg(); }
+}
+else if (lvMode === 'preview') showStart();
+else if (lvMode === 'class') {
+  lvSend({ type: 'setDialogSize', size: 'max' });
+  view.replaceChildren(el('p', { class: 'center' }, 'Lade Klassenübersicht …'));
+  lvSend({ type: 'getClassAnswerData' });
+}
+else {
+  view.replaceChildren(el('p', { class: 'center' }, 'Lade …'));
+  lvSend({ type: 'getAnswerData' });
+}
+</script>
+</body>
+</html>

@@ -58,3 +58,30 @@ Diese Version ist an die [Embed API von LearningView](https://learningview.org/e
 **Ansicht für Lehrpersonen**
 - **Einzelne Schülerlösung:** alle Runden des Kindes mit Übung, Fehlern und den falsch gerechneten Aufgaben.
 - **Klassenübersicht** (Aufgabe im Kurs ohne ausgewählte Person öffnen): eine Tabelle mit allen Kindern, nämlich Runden, Aufgaben, Fehler, Anteil sofort richtig und die zuletzt gespielte Übung. Ein Tipp auf einen Namen zeigt alle Runden. LearningView fragt beim ersten Mal um Zustimmung, die Klassendaten anzuzeigen.
+
+---
+
+# 1 · 1 Test für LearningView (`einmaleins-test.html`)
+
+Ein schlichter Einmaleins-Test mit großen Antwortknöpfen und hohem Kontrast, gedacht auch für Kinder, die schlecht sehen. Die Lehrkraft bekommt eine **Auswertung nach Reihen**.
+
+**Für die Kinder**
+- Sehr große Aufgaben und vier große Antwortknöpfe mit dicken Rahmen, ohne Animationen.
+- Knöpfe „Dunkel“ (gelb auf schwarz) und „A+ Größer“. Die Wahl wird im Speicherstand gemerkt.
+- Bedienbar per Antippen oder mit den Tasten 1–4. Die Aufgaben werden für Bildschirmleser angesagt.
+- Keine sichtbare Zeit und kein Zeitdruck. Die Zeit wird nur für die Auswertung gemessen.
+- Ein angefangener Test kann später fortgesetzt werden.
+
+**Einstellungen der Lehrkraft** (im Aufgaben-Editor über „Einstellungen“)
+- Reihen 1–10, Mal und/oder Geteilt.
+- Aufgaben je Reihe: alle 10, 5 zufällige oder 3 zufällige.
+- Den Test einmal oder beliebig oft machen lassen.
+- Rückmeldung nach jeder Aufgabe (richtig/falsch) oder keine, also als echter Test.
+- Das Ergebnis am Ende zeigen oder nicht.
+
+**Auswertung**
+- **Einzelne Schülerlösung:** jeder Testdurchgang mit einer Tabelle je Reihe: Mal und Geteilt (richtig/gesamt), Median der Antwortzeit und die Fehler samt Antwort des Kindes (z. B. „7 · 8 → 54“).
+- **Klassenübersicht:** Kinder × Reihen als farbige Tabelle (grün ab 90 %, gelb 70–89 %, rot unter 70 %) mit Gesamtwert, Zeit und Datum, dazu eine Zeile „Klasse“ und die häufigsten Fehler in der Klasse. Ein Tipp auf einen Namen öffnet die Einzelauswertung.
+- An die Aufgabenkachel wird der Anteil richtiger Antworten gemeldet.
+
+Die Einrichtung ist gleich wie beim Rechenkran: Datei an eine Aufgabe anhängen, Abgabeform **„keine“** wählen, dann über „Einstellungen“ den Test festlegen. Direkt geöffnet (ohne LearningView) erscheinen erst die Einstellungen, dann kann man den Test ohne Speichern ausprobieren.

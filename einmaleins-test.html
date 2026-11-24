@@ -27,13 +27,22 @@
   button:focus-visible { outline: 6px solid var(--focus); outline-offset: 4px; }
 
   .bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 4px solid var(--line); }
-  .bar h1 { font-size: calc(22px * var(--k)); margin: 0; flex: 1; }
-  .bar .prog { font-size: calc(22px * var(--k)); font-weight: 700; white-space: nowrap; }
+  .bar h1 { font-size: 22px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .bar .prog { font-size: 22px; font-weight: 700; white-space: nowrap; }
   .tool { border: 3px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 10px;
     font-size: 18px; font-weight: 700; padding: 8px 12px; min-width: 52px; }
   .tool[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
 
   main { padding: 16px; max-width: 1000px; margin: 0 auto; }
+  /* Schmale Fenster (Handy): kompakte Kopfzeile */
+  @media (max-width: 560px) {
+    .bar { gap: 8px; padding: 8px 10px; }
+    .bar h1 { display: none; }
+    .bar .prog { flex: 1; font-size: 20px; }
+    .tool { font-size: 15px; padding: 6px 9px; min-width: 0; }
+    .tool .long { display: none; }
+    main { padding: 10px; }
+  }
   .center { text-align: center; }
   h2 { font-size: calc(28px * var(--k)); margin: 18px 0 10px; }
   p, li { font-size: calc(22px * var(--k)); line-height: 1.45; }
@@ -47,10 +56,11 @@
     height: 1em; margin: 0 .18em; position: relative; top: -.06em; }
   .task .op i { display: block; width: .24em; height: .24em; border-radius: 50%; background: currentColor; }
   /* Größe richtet sich nach Breite UND Höhe, damit alles ohne Scrollen ins LearningView-Fenster passt */
-  .task { text-align: center; font-size: calc(clamp(36px, min(12vw, 15vh), 120px) * var(--k)); line-height: 1.1; font-weight: 700; margin: 2vh 0 3vh; letter-spacing: 2px; }
+  .task { text-align: center; white-space: nowrap; font-size: min(calc(clamp(24px, min(16vw, 15vh), 120px) * var(--k)), calc(86vw / var(--n, 7.5)), 20vh); line-height: 1.1; font-weight: 700; margin: 2vh 0 3vh; letter-spacing: 1px; }
   .answers { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 2vh, 18px); max-width: min(760px, 125vh); margin: 0 auto; }
   .ans { border: 6px solid var(--line); background: var(--btn); color: var(--btn-fg); border-radius: 22px;
-    font-size: calc(clamp(30px, min(8.5vw, 10.5vh), 84px) * var(--k)); line-height: 1.1; font-weight: 700; min-height: calc(clamp(64px, 19vh, 140px) * var(--k)); padding: 6px; }
+    font-size: min(calc(clamp(24px, min(11vw, 10.5vh), 84px) * var(--k)), 14vw, 13vh); line-height: 1.1; font-weight: 700;
+    min-height: min(calc(clamp(52px, 19vh, 140px) * var(--k)), 23vh); padding: 4px; border-width: clamp(4px, 1vw, 6px); border-radius: clamp(14px, 3vw, 22px); }
   .ans.chosen { background: var(--on); color: var(--on-fg); }
   .ans.right { background: #0a7a28; color: #fff; border-color: #0a7a28; }
   .ans.wrong { background: #b00020; color: #fff; border-color: #b00020; }
@@ -94,7 +104,7 @@
   <h1>1 · 1 Test</h1>
   <span class="prog" id="prog" aria-live="polite"></span>
   <button class="tool" id="btnContrast" aria-pressed="false" title="Gelb auf Schwarz">Dunkel</button>
-  <button class="tool" id="btnBig" aria-pressed="false" title="Größere Schrift">A+ Größer</button>
+  <button class="tool" id="btnBig" aria-pressed="false" title="Größere Schrift">A+<span class="long"> Größer</span></button>
 </div>
 <main id="view"></main>
 <div class="sr" id="say" aria-live="assertive"></div>
@@ -305,7 +315,7 @@ function runTask() {
   $('#prog').textContent = `${i + 1} / ${at.tasks.length}`;
   const btns = t.opts.map((v, k) => el('button', { class: 'ans', 'aria-label': String(v), onclick: () => answer(v, btns[k]) }, String(v)));
   view.replaceChildren(
-    el('div', { class: 'task', 'aria-hidden': 'true' }, `${t.a} `, el('span', { class: 'op' }, t.op === ':' ? [el('i'), el('i')] : [el('i')]), ` ${t.b} = ?`),
+    el('div', { class: 'task', 'aria-hidden': 'true', style: `--n:${(String(t.a).length + String(t.b).length) * 0.62 + 3.4}` }, `${t.a} `, el('span', { class: 'op' }, t.op === ':' ? [el('i'), el('i')] : [el('i')]), ` ${t.b} = ?`),
     el('div', { class: 'answers', role: 'group', 'aria-label': 'Antworten' }, btns),
     el('div', { class: 'fb', id: 'fb', 'aria-live': 'polite' }),
   );

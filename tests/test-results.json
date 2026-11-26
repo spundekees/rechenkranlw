@@ -1,8 +1,8 @@
 {
   "tests/einmaleins-test.test.mjs": {
-    "last_test": "2026-11-26T17:48:07",
-    "result": "failed",
-    "hash": "737bccf8d1ced46b584b54df841bc32384e0ed1bc13c0a7d05db73558d075696",
+    "last_test": "2026-11-26T18:08:01",
+    "result": "passed",
+    "hash": "a66be1153c96131f13647754a9a699212da9bf8c25705046a9232ccbe6cfb991",
     "deps": [
       "einmaleins-test.html"
     ]

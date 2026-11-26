@@ -262,7 +262,8 @@ function sanitizeData(o) {
   const bad = attempts.filter(a => !a).length;
   if (bad) LOG.warning('daten', `${bad} ungültige Testdurchgänge verworfen`);
   const prefs = o.prefs && typeof o.prefs === 'object' ? { dark: o.prefs.dark === true, big: o.prefs.big === true } : {};
-  return { version: 1, prefs, attempts: attempts.filter(Boolean) };
+  // dropped: Anzahl verworfener Durchgänge (wird nicht gespeichert, nur für die Anzeige bei der Lehrkraft)
+  return { version: 1, prefs, attempts: attempts.filter(Boolean), dropped: bad };
 }
 function loadCfg(text) {
   const c = sanitizeCfg(parseJSON(text, 'appTemplate'));
@@ -357,7 +358,7 @@ window.addEventListener('message', (event) => {
   else if (d && d.type === 'sendAppTemplate') { loadCfg(d.data); if (lvMode === 'settings') showSettings(); }
   else if (d && d.type === 'sendAnswerData') {
     const o = sanitizeData(parseJSON(d.data, 'Speicherstand'));
-    if (o) data = o;
+    if (o) { delete o.dropped; data = o; }
     LOG.info('lv', `Speicherstand geladen: ${data.attempts.length} Durchgänge`);
     applyPrefs();
     if (lvMode === 'student') showStart(); else if (lvMode === 'studentReview') showStudentReport();
@@ -635,10 +636,15 @@ function showClassReport(d) {
     return view.replaceChildren(box);
   }
   const kids = d.data.map(s => {
-    let attempts = [], bad = false;
-    if (s.data) { const o = sanitizeData(parseJSON(s.data, 'Klassendaten')); if (o) attempts = o.attempts; else bad = true; }
+    let attempts = [], bad = false, dropped = 0;
+    if (s.data) {
+      const o = sanitizeData(parseJSON(s.data, 'Klassendaten'));
+      if (o) { attempts = o.attempts; dropped = o.dropped; } else bad = true;
+    }
+    // Wurden Durchgänge verworfen und bleibt keiner übrig, ist der Speicherstand ungültig
+    if (dropped && !attempts.length) bad = true;
     const at = chosenAttempt(attempts);
-    return { s, attempts, bad, at, ev: at ? evaluate(at) : null };
+    return { s, attempts, bad, dropped, at, ev: at ? evaluate(at) : null };
   }).sort((a, b) => `${a.s.surname} ${a.s.name}`.localeCompare(`${b.s.surname} ${b.s.name}`, 'de'));
   const rowSet = new Set(cfgSet ? cfg.rows : []);
   kids.forEach(k => k.ev && Object.keys(k.ev.rows).forEach(r => rowSet.add(Number(r))));
@@ -667,7 +673,8 @@ function showClassReport(d) {
       tr.append(scoreCell(right, n));
     });
     tr.append(scoreCell(k.ev.right, k.ev.total, '', true), el('td', { class: 'c none' }, sec(median(allMs))),
-      el('td', {}, k.at.done ? fmtDate(k.at.t) : `angefangen (${k.at.answers.length}/${k.at.tasks.length})`));
+      el('td', {}, (k.at.done ? fmtDate(k.at.t) : `angefangen (${k.at.answers.length}/${k.at.tasks.length})`)
+        + (k.dropped ? ` · ${k.dropped} ungültige${k.dropped === 1 ? 'r' : ''} Durchgang${k.dropped === 1 ? '' : 'e'} verworfen` : '')));
     const det = el('tr', { class: 'detail', hidden: true }, el('td', { colspan: rows.length + 4 }, k.attempts.slice().reverse().map(attemptTable)));
     const toggle = () => { det.hidden = !det.hidden; };
     tr.onclick = toggle; tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };

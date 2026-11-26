@@ -62,13 +62,16 @@ test('Lehrkraft: Klassenübersicht mit Prozent bei „Gesamt“, manipulierte Da
     { studentId: '1', name: 'Ada', surname: 'Müller', data: mk(3) },
     { studentId: '2', name: EVIL, surname: 'X', data: evil },
     { studentId: '3', name: 'Lin', surname: 'Meier', data: '' },
+    // ein gültiger und ein manipulierter Durchgang
+    { studentId: '4', name: 'Tom', surname: 'Bauer', data: JSON.stringify({ attempts: [JSON.parse(mk(7)).attempts[0], JSON.parse(evil).attempts[0]] }) },
   ];
   const lv = await openLV(browser, 'einmaleins-test.html', { mode: 'class', template: TEMPLATE, classData });
   await sleep(300);
   const rows = await lv.frame.evaluate(() => [...document.querySelectorAll('tbody > tr')].map(tr => tr.textContent));
   assert.ok(rows.some(r => /Ada Müller5\/50\/55\/10 · 50 %/.test(r)), 'Gesamt mit Prozent');
   assert.ok(rows.some(r => r.includes('<img src=x') && r.includes('Ungültiger Speicherstand')), 'Manipulierter Datensatz verworfen, Name als Text');
-  assert.ok(rows.some(r => /^Klasse5\/50\/55\/10 · 50 %$/.test(r)), 'Klassenzeile mit Prozent');
+  assert.ok(rows.some(r => /^Tom Bauer.*1 ungültiger Durchgang verworfen$/.test(r)), 'Hinweis auf verworfenen Durchgang');
+  assert.ok(rows.some(r => /^Klasse5\/105\/1010\/20 · 50 %$/.test(r)), 'Klassenzeile mit Prozent');
   assert.equal(await lv.frame.evaluate(() => window.__xss), undefined);
   assert.deepEqual(lv.errors, []);
   await lv.ctx.close();

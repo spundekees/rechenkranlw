@@ -95,3 +95,17 @@ Ein schlichter Einmaleins-Test mit großen Antwortknöpfen und hohem Kontrast, g
 📄 **Anleitung für Lehrkräfte (PDF):** [Anleitung-Einmaleins-Test.pdf](Anleitung-Einmaleins-Test.pdf)
 
 Die Einrichtung ist gleich wie beim Rechenkran: Datei an eine Aufgabe anhängen, Abgabeform **„keine“** wählen, dann über „Einstellungen“ den Test festlegen. Direkt geöffnet (ohne LearningView) erscheinen erst die Einstellungen, dann kann man den Test ohne Speichern ausprobieren.
+
+---
+
+## Entwicklung, Qualität und Sicherheit
+
+| Thema | Dokument |
+|---|---|
+| Architektur und Technologie-Entscheidung | [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md) |
+| Logging und Debug-Modus (`?debug=1` oder Strg+Alt+D) | [docs/LOGGING.md](docs/LOGGING.md) |
+| Sicherheitsprüfung und OWASP Top 10 | [docs/SICHERHEIT.md](docs/SICHERHEIT.md) |
+| Datenschutz (DSGVO) und Löschkonzept | [docs/DATENSCHUTZ.md](docs/DATENSCHUTZ.md) |
+| Tests und Prüfbefehle | [docs/TESTS.md](docs/TESTS.md) |
+| Projektvorgaben für die Entwicklung | [CLAUDE.md](CLAUDE.md) |
+

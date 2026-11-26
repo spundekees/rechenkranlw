@@ -1,0 +1,48 @@
+# Prüfung bei jedem Push und Pull Request: Secrets, Lint, SAST und alle Tests.
+name: Prüfung
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefung:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # ganze Historie für den Secret-Scan
+
+      - name: Secret-Scan (Gitleaks, MIT)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --no-banner
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten
+        run: npm ci
+
+      - name: Abhängigkeiten auf bekannte Schwachstellen prüfen
+        run: npm audit --audit-level=moderate
+
+      - name: Lint (ESLint mit Sicherheitsregeln)
+        run: npm run lint
+
+      - name: SAST (Semgrep, eigene Regeln)
+        run: |
+          pip install semgrep==1.187.0
+          node tests/extract.mjs
+          npm run sast
+
+      - name: Browser für Tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Alle Tests
+        run: npm run test:all

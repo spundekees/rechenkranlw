@@ -1,6 +1,6 @@
 {
   "tests/einmaleins-test.test.mjs": {
-    "last_test": "2026-11-26T18:08:01",
+    "last_test": "2026-11-26T18:10:26",
     "result": "passed",
     "hash": "a66be1153c96131f13647754a9a699212da9bf8c25705046a9232ccbe6cfb991",
     "deps": [
@@ -8,7 +8,7 @@
     ]
   },
   "tests/rechenkran-lv.test.mjs": {
-    "last_test": "2026-11-26T17:46:28",
+    "last_test": "2026-11-26T18:11:24",
     "result": "passed",
     "hash": "cfbada8ae5be5174f0259142b513d343819bbf5edc5936488bb33daa9083b9ce",
     "deps": [
@@ -16,7 +16,7 @@
     ]
   },
   "tests/rechenkran.test.mjs": {
-    "last_test": "2026-11-26T17:47:35",
+    "last_test": "2026-11-26T18:12:31",
     "result": "passed",
     "hash": "254cb632d80270d4b7b5de7870854ccfbfea0961d2d9ae6a49dc7392bdf899e9",
     "deps": [

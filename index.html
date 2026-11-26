@@ -513,16 +513,27 @@ const LV_ORIGIN = 'https://learningview.org';
 const IN_FRAME = window.parent !== window;
 const LV = window.learningView || null;
 // null = eigenständig (z. B. GitHub Pages); sonst student | studentReview | class | preview | settings
-const lvMode = LV && LV.mode ? LV.mode : (IN_FRAME ? 'student' : null);
+// Übung per Link, z. B. vom 1·1-Test: ?rows=7,8&ops=mul,div&count=20&from=test
+const URLP = new URLSearchParams(location.search);
+const urlPreset = (() => {
+  const rows = (URLP.get('rows') || '').split(',').map(Number).filter(n => n >= 1 && n <= 10);
+  if (!rows.length) return null;
+  const ops = (URLP.get('ops') || 'mul').split(',').filter(o => o === 'mul' || o === 'div');
+  const count = [12, 20, 32, 48].includes(Number(URLP.get('count'))) ? Number(URLP.get('count')) : 20;
+  return { mode: 'mul', rows: [...new Set(rows)].sort((a, b) => a - b), mulOps: ops.length ? ops : ['mul'], count, fromTest: URLP.get('from') === 'test' };
+})();
+// Mit Übung per Link läuft der Kran eigenständig (ohne LearningView-Speicher)
+const lvMode = urlPreset ? null : (LV && LV.mode ? LV.mode : (IN_FRAME ? 'student' : null));
 const lvSend = (m) => { if (IN_FRAME) window.parent.postMessage(m, LV_ORIGIN); };
 // Einstellungen der Lehrperson für diese Aufgabe: { version, settings, allowChoice }
 let lvTemplate = { version: 1, settings: null, allowChoice: true };
 try { if (LV && LV.appTemplate) Object.assign(lvTemplate, JSON.parse(LV.appTemplate)); } catch (e) {}
-const lvLocked = () => lvMode && lvMode !== 'settings' && lvTemplate.settings && !lvTemplate.allowChoice;
+const lvLocked = () => !!urlPreset || (lvMode && lvMode !== 'settings' && lvTemplate.settings && !lvTemplate.allowChoice);
 // Speicherstand des Kindes: { version, prefs, rounds: [...] }
 let lvState = { version: 1, prefs: {}, rounds: [] };
 
 if (!lvMode) { try { Object.assign(settings, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) {} }
+if (urlPreset) { const { fromTest, ...ex } = urlPreset; Object.assign(settings, ex); }
 if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings);
 const PREF_KEYS = ['sound'];
 // In LearningView gibt es keine Jahreszeiten-Auswahl: immer automatisch nach Datum
@@ -530,6 +541,7 @@ if (lvMode) settings.season = 'auto';
 const EXERCISE_KEYS = ['mode', 'rows', 'mulOps', 'range', 'addOps', 'cross', 'types', 'count'];
 const pickKeys = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
 const saveSettings = () => {
+  if (urlPreset) return;   // vorgegebene Übung nicht als eigene Einstellung merken
   if (!lvMode) { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {} return; }
   if (lvMode === 'settings') { lvTemplate.settings = pickKeys(settings, EXERCISE_KEYS); lvSaveTemplate(); return; }
   if (lvMode === 'student') {
@@ -1277,7 +1289,7 @@ function renderMenu() {
   $('#lvSettingsNote').hidden = lvMode !== 'settings';
   $('#lvFixed').hidden = !locked;
   $('.menu-card').classList.toggle('narrow', !!locked);
-  if (locked) $('#lvFixed').innerHTML = `🎯 Deine Übung: <b></b>`, $('#lvFixed b').textContent = describeExercise(settings);
+  if (locked) $('#lvFixed').innerHTML = urlPreset && urlPreset.fromTest ? `🎯 Deine Übung nach dem Test: <b></b>` : `🎯 Deine Übung: <b></b>`, $('#lvFixed b').textContent = describeExercise(settings);
   ['#modeTabs', '#secMul', '#secAdd', '#countChips', '#countTitle'].forEach(sel => { if (locked) $(sel).style.display = 'none'; });
   if (locked) $('#poolInfo').textContent = `${settings.count} Aufgaben`;
   $('#lvChoiceBox').hidden = lvMode !== 'settings';
@@ -1351,7 +1363,8 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
 function describeExercise(s) {
   if (s.mode === 'mul') {
     const ops = s.mulOps.length === 2 ? 'Mal & Geteilt' : s.mulOps[0] === 'div' ? 'Geteilt' : 'Mal';
-    const rows = s.rows.length === 10 ? 'alle Reihen' : (s.rows.length === 1 ? `${s.rows[0]}er-Reihe` : `Reihen ${s.rows.join(', ')}`);
+    const rows = s.rows.length === 10 ? 'alle Reihen' : (s.rows.length === 1 ? `${s.rows[0]}er-Reihe`
+      : s.rows.slice(0, -1).map(r => `${r}er-`).join(', ') + ` und ${s.rows[s.rows.length - 1]}er-Reihe`);
     return `Einmaleins ${ops} · ${rows}`;
   }
   const ops = s.addOps.length === 2 ? 'Plus & Minus' : s.addOps[0] === 'minus' ? 'Minus' : 'Plus';

@@ -55,6 +55,8 @@ Diese Version ist an die [Embed API von LearningView](https://learningview.org/e
 - Die Jahreszeit richtet sich in LearningView immer automatisch nach dem Datum. Die Kinder können sie nicht auswählen.
 - An LearningView gemeldet wird der Anteil der sofort richtig gelösten Aufgaben der letzten Runde. Er erscheint als Prozentwert auf der Aufgabenkachel.
 
+**Übung per Link vorgeben:** Mit `?rows=7,8&ops=mul,div&count=20` in der Adresse startet der Rechenkran direkt mit dieser Übung (Einmaleins, Reihen, Mal/Geteilt, Anzahl 12/20/32/48). Die Kinder können sie dann nicht ändern.
+
 **Ansicht für Lehrpersonen**
 - **Einzelne Schülerlösung:** alle Runden des Kindes mit Übung, Fehlern und den falsch gerechneten Aufgaben.
 - **Klassenübersicht** (Aufgabe im Kurs ohne ausgewählte Person öffnen): eine Tabelle mit allen Kindern, nämlich Runden, Aufgaben, Fehler, Anteil sofort richtig und die zuletzt gespielte Übung. Ein Tipp auf einen Namen zeigt alle Runden. LearningView fragt beim ersten Mal um Zustimmung, die Klassendaten anzuzeigen.
@@ -83,6 +85,12 @@ Ein schlichter Einmaleins-Test mit großen Antwortknöpfen und hohem Kontrast, g
 - **Einzelne Schülerlösung:** jeder Testdurchgang mit einer Tabelle je Reihe: Mal und Geteilt (richtig/gesamt), Median der Antwortzeit und die Fehler samt Antwort des Kindes (z. B. „7 · 8 → 54“).
 - **Klassenübersicht:** Kinder × Reihen als farbige Tabelle (grün ab 90 %, gelb 70–89 %, rot unter 70 %) mit Gesamtwert, Zeit und Datum, dazu eine Zeile „Klasse“ und die häufigsten Fehler in der Klasse. Ein Tipp auf einen Namen öffnet die Einzelauswertung.
 - An die Aufgabenkachel wird der Anteil richtiger Antworten gemeldet.
+
+**Ergebnis und Übungsempfehlung für das Kind**
+- Am Ende sieht das Kind den Gesamtwert und jede Reihe mit Anzahl und Prozent. Dazu gibt es eine Rückmeldung: grün (ab 90 %) mit Lob, gelb (70–89 %) mit wohlwollendem Lob und dem Hinweis auf kleine Lücken, rot (unter 70 %) mit „Hier musst du noch üben.“
+- Über **„Jetzt üben“** zeigt ein Übergabe-Dialog, was das Kind üben soll. Danach startet er den Rechenkran genau mit diesen Reihen und Rechenarten: zuerst die roten Reihen, sonst die gelben, sonst alle gemischt. Abschaltbar in den Einstellungen („Nach dem Test üben“).
+- Der Rechenkran wird dafür über GitHub Pages geöffnet: `https://spundekees.github.io/rechenkranlw/?rows=7,8&ops=mul,div&count=20&from=test`. Die Übung dort wird nicht in LearningView gespeichert. GitHub Pages muss für dieses Repo eingeschaltet sein.
+
 
 📄 **Anleitung für Lehrkräfte (PDF):** [Anleitung-Einmaleins-Test.pdf](Anleitung-Einmaleins-Test.pdf)
 

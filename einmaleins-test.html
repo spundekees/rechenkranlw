@@ -68,8 +68,20 @@
   .fb { text-align: center; font-size: calc(clamp(18px, 4vh, 30px) * var(--k)); font-weight: 700; min-height: 1.4em; margin-top: 1.5vh; }
 
   /* Ergebnis für das Kind */
-  .reslist { list-style: none; padding: 0; max-width: 620px; margin: 0 auto; }
-  .reslist li { display: flex; justify-content: space-between; border-bottom: 3px solid var(--line); padding: 10px 4px; font-weight: 700; }
+  .total { text-align: center; font-size: calc(30px * var(--k)); font-weight: 700; margin: 6px 0 4px; }
+  .msg { text-align: center; font-size: calc(22px * var(--k)); font-weight: 700; margin: 0 0 14px; }
+  .reslist { list-style: none; padding: 0; max-width: 680px; margin: 0 auto; display: grid; gap: 10px; }
+  .reslist li { border: 4px solid var(--line); border-radius: 14px; padding: 10px 14px; color: #000; }
+  .reslist li.good { background: var(--good); } .reslist li.mid { background: var(--mid); } .reslist li.low { background: var(--low); }
+  .reslist .head { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; font-size: calc(24px * var(--k)); }
+  .reslist .say { font-size: calc(19px * var(--k)); margin-top: 2px; }
+  /* Übergabe an den Rechenkran */
+  .handover { max-width: 680px; margin: 0 auto; text-align: center; }
+  .handover .plan { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 12px 0; }
+  .handover .plan span { border: 5px solid var(--line); border-radius: 16px; padding: 10px 18px; font-size: calc(30px * var(--k)); font-weight: 700; }
+  .handover .ops { font-size: calc(24px * var(--k)); font-weight: 700; }
+  a.big-btn { text-decoration: none; text-align: center; }
+  .smalllink { display: block; text-align: center; margin-top: 14px; font-size: 17px; color: var(--fg); }
 
   /* Einstellungen */
   .chips { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -134,7 +146,9 @@ const lvMode = LV && LV.mode ? LV.mode : (IN_FRAME ? 'student' : null);   // nul
 const lvSend = (m) => { if (IN_FRAME) window.parent.postMessage(m, LV_ORIGIN); };
 
 // Einstellungen der Lehrperson (appTemplate)
-const DEFAULT_CFG = { version: 1, rows: [1,2,3,4,5,6,7,8,9,10], ops: ['mul'], perRow: 10, attempts: 'multi', showResult: true, feedback: false };
+const DEFAULT_CFG = { version: 1, rows: [1,2,3,4,5,6,7,8,9,10], ops: ['mul'], perRow: 10, attempts: 'multi', showResult: true, feedback: false, practice: true };
+// Hier liegt die Übung „Rechenkran“, die nach dem Test mit den passenden Reihen geöffnet wird
+const PRACTICE_URL = 'https://spundekees.github.io/rechenkranlw/';
 let cfg = { ...DEFAULT_CFG };
 let cfgSet = false;
 function loadCfg(text) {
@@ -269,6 +283,8 @@ function showSettings() {
     el('h2', {}, 'Rückmeldung für das Kind'),
     chipRow([{ v: false, label: 'keine', sub: 'echter Test' }, { v: true, label: 'nach jeder Aufgabe', sub: 'richtig / falsch' }], v => cfg.feedback === v, v => { cfg.feedback = v; }),
     el('div', { style: 'margin-top:10px' }, chipRow([{ v: true, label: 'Ergebnis am Ende zeigen' }, { v: false, label: 'Ergebnis nicht zeigen' }], v => cfg.showResult === v, v => { cfg.showResult = v; })),
+    el('h2', {}, 'Nach dem Test üben'),
+    chipRow([{ v: true, label: 'Rechenkran anbieten', sub: 'mit den Reihen, die noch nicht sitzen' }, { v: false, label: 'nicht anbieten' }], v => cfg.practice === v, v => { cfg.practice = v; }),
     el('p', { class: ok ? '' : 'warn' }, ok ? `Der Test hat ${n} Aufgaben.` : 'Bitte mindestens eine Reihe und eine Rechenart wählen.'),
     el('p', { class: 'status', id: 'status' }),
   );
@@ -293,6 +309,7 @@ function showStart() {
   } else if (last && cfg.attempts === 'once' && lvMode === 'student') {
     kids.push(el('h2', { class: 'center' }, 'Du hast den Test schon gemacht. 👍'));
     if (cfg.showResult) kids.push(resultList(last));
+    kids.push(practiceButton(last));
   } else {
     kids.push(el('h2', { class: 'center' }, 'Einmaleins-Test'),
       el('p', { class: 'center' }, `${countFor(cfg)} Aufgaben. Tippe immer auf das richtige Ergebnis.`),
@@ -365,14 +382,70 @@ const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x,
 const sec = (ms) => ms == null ? '–' : (ms / 1000).toFixed(1).replace('.', ',') + ' s';
 const level = (r, n) => !n ? 'none' : r / n >= .9 ? 'good' : r / n >= .7 ? 'mid' : 'low';
 
+const pctOf = (r, n) => n ? Math.round(r / n * 100) : 0;
+const ROW_SAY = {
+  good: ['Super! Die kannst du richtig gut. 🌟', 'Spitze! Das sitzt. 🌟', 'Klasse! Die kannst du. 🌟'],
+  mid: ['Gut gemacht! Es gibt noch kleine Lücken.', 'Schon gut! Ein paar Aufgaben übst du noch.'],
+  low: ['Hier musst du noch üben.'],
+};
+const ICON = { good: '✓', mid: '~', low: '!' };
 function resultList(at) {
-  const ev = evaluate(at);
+  const ev = evaluate(at), lv = level(ev.right, ev.total);
+  const head = lv === 'good' ? 'Super gemacht! Du kannst das Einmaleins richtig gut. 🌟'
+    : lv === 'mid' ? 'Gut gemacht! Ein paar Aufgaben übst du noch.'
+    : 'Du hast fleißig gerechnet. Jetzt übst du die schweren Reihen.';
   return el('div', {},
-    el('p', { class: 'center' }, `${ev.right} von ${ev.total} richtig`),
-    el('ul', { class: 'reslist' }, Object.keys(ev.rows).sort((a, b) => a - b).map(row => {
-      const r = ev.rows[row];
-      return el('li', {}, el('span', {}, `${row}er-Reihe`), el('span', {}, `${r.mul[0] + r.div[0]} von ${r.mul[1] + r.div[1]}`));
+    el('p', { class: 'total' }, `${ev.right} von ${ev.total} richtig · ${ev.pct} %`),
+    el('p', { class: 'msg' }, head),
+    el('ul', { class: 'reslist' }, Object.keys(ev.rows).sort((a, b) => a - b).map((row, i) => {
+      const r = ev.rows[row], right = r.mul[0] + r.div[0], n = r.mul[1] + r.div[1], l = level(right, n);
+      const says = ROW_SAY[l];
+      return el('li', { class: l },
+        el('div', { class: 'head' }, el('span', {}, `${ICON[l]} ${row}er-Reihe`), el('span', {}, `${right} von ${n} · ${pctOf(right, n)} %`)),
+        el('div', { class: 'say' }, says[i % says.length]));
     })));
+}
+
+// Übungsplan: zuerst die roten Reihen, sonst die gelben, sonst alles gemischt
+function practicePlan(at) {
+  const ev = evaluate(at);
+  const rows = Object.keys(ev.rows).map(Number).sort((a, b) => a - b);
+  const lv = (r) => { const x = ev.rows[r]; return level(x.mul[0] + x.div[0], x.mul[1] + x.div[1]); };
+  const red = rows.filter(r => lv(r) === 'low'), yellow = rows.filter(r => lv(r) === 'mid');
+  const kind = red.length ? 'low' : yellow.length ? 'mid' : 'good';
+  const target = red.length ? red : yellow.length ? yellow : rows;
+  // Rechenart: die, bei der in diesen Reihen Fehler passiert sind
+  let ops = ['mul', 'div'].filter(k => at.ops.includes(k) && target.some(r => { const x = ev.rows[r][k]; return x[1] && x[0] / x[1] < .9; }));
+  if (!ops.length) ops = at.ops.slice();
+  return { rows: target, ops, kind };
+}
+function practiceUrl(plan) {
+  const q = new URLSearchParams({ rows: plan.rows.join(','), ops: plan.ops.join(','), count: '20', from: 'test' });
+  return `${PRACTICE_URL}?${q}`;
+}
+const rowNames = (rows) => rows.length === 1 ? `${rows[0]}er-Reihe` : rows.slice(0, -1).map(r => `${r}er`).join(', ') + ` und ${rows[rows.length - 1]}er-Reihe`;
+function practiceButton(at) {
+  if (!cfg.practice) return '';
+  return el('button', { class: 'big-btn', onclick: () => showHandover(at) }, '🏗️ Jetzt üben ▶');
+}
+function showHandover(at) {
+  const plan = practicePlan(at), url = practiceUrl(plan);
+  const intro = plan.kind === 'low' ? 'Diese Reihen übst du jetzt mit dem Rechenkran:'
+    : plan.kind === 'mid' ? 'Damit die kleinen Lücken verschwinden, übst du jetzt:'
+    : 'Du kannst alles! Zum Spaß übst du jetzt alle Reihen gemischt:';
+  const ops = plan.ops.length === 2 ? 'Mal · und Geteilt :' : plan.ops[0] === 'div' ? 'Geteilt :' : 'Mal ·';
+  $('#prog').textContent = '';
+  view.replaceChildren(el('div', { class: 'handover' },
+    el('h2', {}, '🏗️ Auf zum Rechenkran!'),
+    el('p', {}, intro),
+    el('div', { class: 'plan' }, plan.rows.map(r => el('span', {}, `${r}er-Reihe`))),
+    el('p', { class: 'ops' }, ops),
+    el('p', {}, 'So geht es: Fahre den Kran zum Container, hol eine Kiste heraus und bring sie zum Laster mit dem richtigen Ergebnis.'),
+    el('a', { class: 'big-btn', href: url, target: '_self' }, "Los geht's ▶"),
+    el('a', { class: 'smalllink', href: url, target: '_blank', rel: 'noopener' }, 'Rechenkran in neuem Fenster öffnen'),
+    el('button', { class: 'big-btn alt', onclick: () => showFinished(at) }, '◀ Zurück zum Ergebnis')));
+  $('#say').textContent = `${intro} ${rowNames(plan.rows)}. ${ops.replace(/[·:]/g, '')}.`;
+  view.querySelector('a.big-btn').focus();
 }
 function finish() {
   const at = lastAttempt();
@@ -380,19 +453,23 @@ function finish() {
   const ev = evaluate(at);
   persist();
   if (ev.total) lvSend({ result: { score: { raw: ev.right, max: ev.total } } });
+  showFinished(at);
+  $('#say').textContent = `Fertig. ${ev.right} von ${ev.total} richtig, ${ev.pct} Prozent.`;
+}
+function showFinished(at) {
   $('#prog').textContent = '';
   const kids = [el('h2', { class: 'center' }, 'Fertig! 🎉'), el('p', { class: 'center' }, 'Danke, dein Test ist abgegeben.')];
   if (cfg.showResult) kids.push(resultList(at));
-  if (cfg.attempts !== 'once' || !lvMode) kids.push(el('button', { class: 'big-btn alt', onclick: () => lvMode ? startAttempt() : showSettings() }, 'Noch einmal'));
+  kids.push(practiceButton(at));
+  if (cfg.attempts !== 'once' || !lvMode) kids.push(el('button', { class: 'big-btn alt', onclick: () => lvMode ? startAttempt() : showSettings() }, 'Test noch einmal'));
   kids.push(el('p', { class: 'status center', id: 'status' }));
   view.replaceChildren(...kids);
-  $('#say').textContent = `Fertig. ${ev.right} von ${ev.total} richtig.`;
 }
 
 /* ---------- Auswertung für Lehrpersonen ---------- */
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
-function scoreCell(r, n, cls = '') {
-  return el('td', { class: `c ${level(r, n)} ${cls}` }, n ? `${r}/${n}` : '–');
+function scoreCell(r, n, cls = '', withPct = false) {
+  return el('td', { class: `c ${level(r, n)} ${cls}` }, n ? `${r}/${n}` + (withPct ? ` · ${pctOf(r, n)} %` : '') : '–');
 }
 function attemptTable(at) {
   const ev = evaluate(at);
@@ -465,7 +542,7 @@ function showClassReport(d) {
       x.wrong.forEach(w => { const key = w.split(' → ')[0]; wrongCount[key] = (wrongCount[key] || 0) + 1; });
       tr.append(scoreCell(right, n));
     });
-    tr.append(scoreCell(k.ev.right, k.ev.total), el('td', { class: 'c none' }, sec(median(allMs))),
+    tr.append(scoreCell(k.ev.right, k.ev.total, '', true), el('td', { class: 'c none' }, sec(median(allMs))),
       el('td', {}, k.at.done ? fmtDate(k.at.t) : `angefangen (${k.at.answers.length}/${k.at.tasks.length})`));
     const det = el('tr', { class: 'detail', hidden: true }, el('td', { colspan: rows.length + 4 }, k.attempts.slice().reverse().map(attemptTable)));
     const toggle = () => { det.hidden = !det.hidden; };
@@ -473,7 +550,7 @@ function showClassReport(d) {
     tb.append(tr, det);
   });
   const tot = rows.reduce((a, r) => [a[0] + sums[r][0], a[1] + sums[r][1]], [0, 0]);
-  tb.append(el('tr', {}, el('td', {}, el('strong', {}, 'Klasse')), rows.map(r => scoreCell(sums[r][0], sums[r][1])), scoreCell(tot[0], tot[1]), el('td'), el('td')));
+  tb.append(el('tr', {}, el('td', {}, el('strong', {}, 'Klasse')), rows.map(r => scoreCell(sums[r][0], sums[r][1])), scoreCell(tot[0], tot[1], '', true), el('td'), el('td')));
   box.append(el('div', { class: 'scroll' }, el('table', {}, el('thead', {}, head), tb)));
 
   const top = Object.entries(wrongCount).sort((a, b) => b[1] - a[1]).slice(0, 12);

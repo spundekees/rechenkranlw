@@ -123,6 +123,72 @@
 
 <script>
 'use strict';
+/* ---------- Logging & Debugging (identisch in allen HTML-Dateien, siehe docs/LOGGING.md) ---------- */
+// Log-Level über die Adresse: ?log=DEBUG|INFO|WARNING|ERROR|CRITICAL (Standard: WARNING)
+// ?debug=1 oder Strg+Alt+D: Level DEBUG und Log-Fenster mit „Herunterladen“ (Datei *.log) und „Kopieren“.
+// Datenschutz: Es werden keine Namen, IDs oder Speicherstände protokolliert, nur Zustände, Zähler und Fehler.
+const LOG = (() => {
+  const LEVELS = Object.freeze({ DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50 });
+  const levelValue = (name) => Object.prototype.hasOwnProperty.call(LEVELS, name) ? LEVELS[name] : null;
+  let params;
+  try { params = new URLSearchParams(location.search); } catch { params = new URLSearchParams(); }
+  let debug = params.get('debug') === '1';
+  let min = levelValue(String(params.get('log') || '').toUpperCase()) ?? (debug ? LEVELS.DEBUG : LEVELS.WARNING);
+  const MAX_LINES = 1000, buffer = [];
+  let panel = null, panelList = null;
+  const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+  function write(level, component, message, err) {
+    if (levelValue(level) < min) return;
+    let line = `${stamp()} | ${level} | ${component} | ${message}`;
+    if (err && err.stack) line += `\nTraceback:\n${err.stack}`;
+    else if (err) line += ` | ${String(err)}`;
+    buffer.push(line);
+    if (buffer.length > MAX_LINES) buffer.shift();
+    const out = levelValue(level) >= LEVELS.ERROR ? console.error : level === 'WARNING' ? console.warn : console.log;
+    out(line);
+    if (panelList) { const li = document.createElement('li'); li.textContent = line; panelList.append(li); panelList.scrollTop = panelList.scrollHeight; }
+  }
+  function fileName() { return `${document.title.replace(/[^\wäöüÄÖÜß-]+/g, '-')}-${stamp().replace(/[: ]/g, '-')}.log`; }
+  function download() {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buffer.join('\n') + '\n'], { type: 'text/plain' }));
+      a.download = fileName(); document.body.append(a); a.click(); a.remove();
+      write('INFO', 'log', 'Log-Datei heruntergeladen');
+    } catch (e) { write('ERROR', 'log', 'Herunterladen nicht möglich', e); }
+  }
+  function copy() {
+    const text = buffer.join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => write('INFO', 'log', 'Log kopiert'), (e) => write('WARNING', 'log', 'Kopieren nicht möglich', e));
+  }
+  function showPanel() {
+    if (panel) return;
+    panel = document.createElement('div');
+    panel.setAttribute('style', 'position:fixed;right:8px;bottom:8px;z-index:99999;width:min(560px,96vw);max-height:40vh;display:flex;flex-direction:column;background:#111;color:#eee;font:12px/1.4 monospace;border:2px solid #fde047;border-radius:8px');
+    const bar = document.createElement('div');
+    bar.setAttribute('style', 'display:flex;gap:6px;padding:6px;align-items:center');
+    const title = document.createElement('b'); title.textContent = 'Debug-Log'; title.style.flex = '1';
+    const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = fn; return b; };
+    bar.append(title, mk('Herunterladen', download), mk('Kopieren', copy), mk('Schließen', () => { panel.remove(); panel = panelList = null; }));
+    panelList = document.createElement('ol');
+    panelList.setAttribute('style', 'margin:0;padding:4px 8px 8px 28px;overflow:auto;white-space:pre-wrap');
+    buffer.forEach((l) => { const li = document.createElement('li'); li.textContent = l; panelList.append(li); });
+    panel.append(bar, panelList);
+    document.body.append(panel);
+  }
+  function enableDebug() { debug = true; min = LEVELS.DEBUG; write('INFO', 'log', 'Debug-Modus eingeschaltet'); showPanel(); }
+  window.addEventListener('error', (e) => write('ERROR', 'window', e.message || 'Unbekannter Fehler', e.error));
+  window.addEventListener('unhandledrejection', (e) => write('ERROR', 'promise', 'Unbehandelte Promise-Ablehnung', e.reason));
+  document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) enableDebug(); });
+  if (debug) { if (document.body) showPanel(); else document.addEventListener('DOMContentLoaded', showPanel); }
+  return Object.freeze({
+    debug: (c, m) => write('DEBUG', c, m), info: (c, m) => write('INFO', c, m), warning: (c, m, e) => write('WARNING', c, m, e),
+    error: (c, m, e) => write('ERROR', c, m, e), critical: (c, m, e) => write('CRITICAL', c, m, e),
+    lines: () => buffer.slice(), download, enableDebug,
+  });
+})();
+
 /* ---------- Hilfen ---------- */
 const $ = (s) => document.querySelector(s);
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -135,7 +201,6 @@ const el = (tag, attrs = {}, ...kids) => {
   return e;
 };
 const view = $('#view');
-const OPS = { mul: '·', div: ':' };
 const opWord = { '·': 'mal', ':': 'geteilt durch' };
 
 /* ---------- LearningView ---------- */
@@ -151,9 +216,57 @@ const DEFAULT_CFG = { version: 1, rows: [1,2,3,4,5,6,7,8,9,10], ops: ['mul'], pe
 const PRACTICE_URL = 'https://spundekees.github.io/rechenkranlw/';
 let cfg = { ...DEFAULT_CFG };
 let cfgSet = false;
+/* ---------- Eingabeprüfung ----------
+   Einstellungen (appTemplate) und Speicherstände (answerData) kommen von außen. Speicherstände stammen von
+   den Kindern und gelten als nicht vertrauenswürdig: Sie werden vor jeder Anzeige geprüft. */
+function parseJSON(text, what) {
+  if (!text) return null;
+  try { return JSON.parse(text); } catch (e) { LOG.warning('daten', `${what}: ungültiges JSON, wird ignoriert`, e); return null; }
+}
+const isInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+const rowsOf = (v) => Array.isArray(v) ? [...new Set(v.map(Number).filter(n => isInt(n, 1, 10)))].sort((a, b) => a - b) : [];
+function sanitizeCfg(o) {
+  if (!o || typeof o !== 'object' || !Array.isArray(o.rows)) return null;
+  const ops = Array.isArray(o.ops) ? ['mul', 'div'].filter(k => o.ops.includes(k)) : DEFAULT_CFG.ops;
+  return {
+    version: 1, rows: rowsOf(o.rows), ops,
+    perRow: [10, 5, 3].includes(o.perRow) ? o.perRow : DEFAULT_CFG.perRow,
+    attempts: o.attempts === 'once' ? 'once' : 'multi',
+    showResult: o.showResult !== false, feedback: o.feedback === true, practice: o.practice !== false,
+  };
+}
+function sanitizeTask(t) {
+  if (!t || typeof t !== 'object' || !['·', ':'].includes(t.op)) return null;
+  const { a, b, ans, row } = t;
+  if (![a, b, ans].every(v => isInt(v, 0, 100)) || !isInt(row, 1, 10)) return null;
+  if (t.op === '·' ? a * b !== ans : b === 0 || a / b !== ans) return null;
+  const opts = Array.isArray(t.opts) ? t.opts.filter(v => isInt(v, 0, 100)).slice(0, 4) : [];
+  return { a, op: t.op, b, ans, row, opts };
+}
+function sanitizeAttempt(at) {
+  if (!at || typeof at !== 'object' || !Array.isArray(at.tasks) || !Array.isArray(at.answers)) return null;
+  const tasks = at.tasks.slice(0, 400).map(sanitizeTask);
+  if (tasks.some(t => !t)) return null;
+  const answers = at.answers.slice(0, tasks.length).map(x => ({
+    given: x && isInt(x.given, 0, 100) ? x.given : -1,
+    ms: x && Number.isFinite(x.ms) && x.ms >= 0 ? Math.min(Math.round(x.ms), 3600000) : 0,
+  }));
+  return {
+    t: typeof at.t === 'string' ? at.t.slice(0, 40) : '', rows: rowsOf(at.rows),
+    ops: Array.isArray(at.ops) ? ['mul', 'div'].filter(k => at.ops.includes(k)) : [], tasks, answers, done: at.done === true,
+  };
+}
+function sanitizeData(o) {
+  if (!o || typeof o !== 'object' || !Array.isArray(o.attempts)) return null;
+  const attempts = o.attempts.slice(-200).map(sanitizeAttempt);
+  const bad = attempts.filter(a => !a).length;
+  if (bad) LOG.warning('daten', `${bad} ungültige Testdurchgänge verworfen`);
+  const prefs = o.prefs && typeof o.prefs === 'object' ? { dark: o.prefs.dark === true, big: o.prefs.big === true } : {};
+  return { version: 1, prefs, attempts: attempts.filter(Boolean) };
+}
 function loadCfg(text) {
-  if (!text) return;
-  try { const o = JSON.parse(text); if (o && Array.isArray(o.rows)) { cfg = { ...DEFAULT_CFG, ...o }; cfgSet = true; } } catch (e) {}
+  const c = sanitizeCfg(parseJSON(text, 'appTemplate'));
+  if (c) { cfg = { ...DEFAULT_CFG, ...c }; cfgSet = true; LOG.info('einstellungen', `Test eingerichtet: ${cfg.rows.length} Reihen, ${cfg.ops.join('+')}, ${cfg.perRow} je Reihe`); }
 }
 loadCfg(LV && LV.appTemplate);
 
@@ -213,6 +326,7 @@ function persist() {
 function flush() {
   if (!saver.dirty || saver.busy) return;
   saver.dirty = false; saver.busy = true;
+  LOG.debug('lv', 'saveAnswerData gesendet');
   lvSend({ type: 'saveAnswerData', data: JSON.stringify(data) });
 }
 const tplSaver = { busy: false, dirty: false, timer: null };
@@ -233,21 +347,28 @@ window.addEventListener('message', (event) => {
   const d = event.data;
   if (d === 'SAVED') { saver.busy = false; setStatus('✓ Gespeichert'); if (saver.dirty) saver.timer = setTimeout(flush, 1500); }
   else if (d && d.type === 'saveAnswerDataError') {
+    LOG.error('lv', `Speichern fehlgeschlagen: ${d.error}`);
     saver.busy = false; setStatus('Speichern fehlgeschlagen – neuer Versuch …', true);
     if (d.error !== 'ANSWER_DATA_TOO_LARGE') { saver.dirty = true; saver.timer = setTimeout(flush, 3000); }
   }
   else if (d === 'APP_TEMPLATE_SAVED') { tplSaver.busy = false; setStatus('✓ Einstellungen gespeichert'); if (tplSaver.dirty) flushCfg(); }
-  else if (d && d.type === 'saveAppTemplateError') { tplSaver.busy = false; setStatus('Nicht gespeichert: ' + d.error, true); }
+  else if (d && d.type === 'saveAppTemplateError') {
+    LOG.error('lv', `appTemplate nicht gespeichert: ${d.error}`); tplSaver.busy = false; setStatus('Nicht gespeichert: ' + d.error, true); }
   else if (d && d.type === 'sendAppTemplate') { loadCfg(d.data); if (lvMode === 'settings') showSettings(); }
   else if (d && d.type === 'sendAnswerData') {
-    if (d.data) { try { const o = JSON.parse(d.data); if (o && Array.isArray(o.attempts)) data = { version: 1, prefs: {}, ...o }; } catch (e) {} }
+    const o = sanitizeData(parseJSON(d.data, 'Speicherstand'));
+    if (o) data = o;
+    LOG.info('lv', `Speicherstand geladen: ${data.attempts.length} Durchgänge`);
     applyPrefs();
     if (lvMode === 'student') showStart(); else if (lvMode === 'studentReview') showStudentReport();
   }
   else if (d && d.type === 'classDataConsentPending') {
     view.replaceChildren(el('p', { class: 'center' }, 'Bitte in LearningView bestätigen, dass die Klassendaten angezeigt werden dürfen.'));
   }
-  else if (d && d.type === 'sendClassAnswerData' && lvMode === 'class') showClassReport(d);
+  else if (d && d.type === 'sendClassAnswerData' && lvMode === 'class') {
+    if (d.error) LOG.warning('lv', `Klassendaten nicht verfügbar: ${d.error}`); else LOG.info('lv', `Klassendaten erhalten: ${Array.isArray(d.data) ? d.data.length : 0} Einträge`);
+    showClassReport(d);
+  }
 });
 
 /* ---------- Einstellungen (Lehrperson bzw. eigenständig) ---------- */
@@ -320,6 +441,7 @@ function showStart() {
   const b = view.querySelector('.big-btn'); if (b) b.focus();
 }
 function startAttempt() {
+  LOG.info('test', `Test gestartet: ${countFor(cfg)} Aufgaben`);
   data.attempts.push({ t: new Date().toISOString(), rows: cfg.rows.slice(), ops: cfg.ops.slice(), tasks: makeTasks(cfg), answers: [], done: false });
   persist();
   runTask();
@@ -365,7 +487,7 @@ document.addEventListener('keydown', (e) => {
 
 function evaluate(at) {
   // je Reihe und Rechenart: richtig / gesamt / Zeiten / Fehler
-  const rows = {};
+  const rows = Object.create(null);   // ohne Prototyp: keine Schlüssel wie __proto__
   at.tasks.forEach((t, i) => {
     const a = at.answers[i]; if (!a) return;
     const r = rows[t.row] = rows[t.row] || { mul: [0, 0], div: [0, 0], ms: [], wrong: [] };
@@ -430,6 +552,7 @@ function practiceButton(at) {
 }
 function showHandover(at) {
   const plan = practicePlan(at), url = practiceUrl(plan);
+  LOG.info('uebergabe', `Übungsempfehlung: Reihen ${plan.rows.join(',')}, ${plan.ops.join('+')}`);
   const intro = plan.kind === 'low' ? 'Diese Reihen übst du jetzt mit dem Rechenkran:'
     : plan.kind === 'mid' ? 'Damit die kleinen Lücken verschwinden, übst du jetzt:'
     : 'Du kannst alles! Zum Spaß übst du jetzt alle Reihen gemischt:';
@@ -452,6 +575,7 @@ function finish() {
   at.done = true;
   const ev = evaluate(at);
   persist();
+  LOG.info('test', `Test beendet: ${ev.right}/${ev.total} richtig (${ev.pct} %)`);
   if (ev.total) lvSend({ result: { score: { raw: ev.right, max: ev.total } } });
   showFinished(at);
   $('#say').textContent = `Fertig. ${ev.right} von ${ev.total} richtig, ${ev.pct} Prozent.`;
@@ -467,7 +591,7 @@ function showFinished(at) {
 }
 
 /* ---------- Auswertung für Lehrpersonen ---------- */
-const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 function scoreCell(r, n, cls = '', withPct = false) {
   return el('td', { class: `c ${level(r, n)} ${cls}` }, n ? `${r}/${n}` + (withPct ? ` · ${pctOf(r, n)} %` : '') : '–');
 }
@@ -512,7 +636,7 @@ function showClassReport(d) {
   }
   const kids = d.data.map(s => {
     let attempts = [], bad = false;
-    if (s.data) { try { const o = JSON.parse(s.data); attempts = Array.isArray(o.attempts) ? o.attempts : []; } catch (e) { bad = true; } }
+    if (s.data) { const o = sanitizeData(parseJSON(s.data, 'Klassendaten')); if (o) attempts = o.attempts; else bad = true; }
     const at = chosenAttempt(attempts);
     return { s, attempts, bad, at, ev: at ? evaluate(at) : null };
   }).sort((a, b) => `${a.s.surname} ${a.s.name}`.localeCompare(`${b.s.surname} ${b.s.name}`, 'de'));
@@ -562,6 +686,7 @@ function showClassReport(d) {
 function main_wide() { view.style.maxWidth = '1400px'; }
 
 /* ---------- Start ---------- */
+LOG.info('start', `1·1-Test gestartet, Modus: ${lvMode || 'eigenständig'}`);
 applyPrefs();
 if (!lvMode) showSettings();
 else if (lvMode === 'settings') {

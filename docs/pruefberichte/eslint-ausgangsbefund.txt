@@ -1,0 +1,105 @@
+
+/home/user/rechenkranlw/einmaleins-test.html
+  128:115  warning  Generic Object Injection Sink               security/detect-object-injection
+  128:121  warning  Generic Object Injection Sink               security/detect-object-injection
+  128:130  warning  Generic Object Injection Sink               security/detect-object-injection
+  128:136  warning  Generic Object Injection Sink               security/detect-object-injection
+  132:70   warning  Generic Object Injection Sink               security/detect-object-injection
+  138:7    error    'OPS' is assigned a value but never used    no-unused-vars
+  156:129  error    'e' is defined but never used               no-unused-vars
+  156:132  error    Empty block statement                       no-empty
+  186:46   warning  Generic Object Injection Sink               security/detect-object-injection
+  188:17   warning  Generic Object Injection Sink               security/detect-object-injection
+  188:27   warning  Generic Object Injection Sink               security/detect-object-injection
+  188:40   warning  Generic Object Injection Sink               security/detect-object-injection
+  188:50   warning  Generic Object Injection Sink               security/detect-object-injection
+  243:140  error    'e' is defined but never used               no-unused-vars
+  243:143  error    Empty block statement                       no-empty
+  331:13   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  333:116  warning  Function Call Object Injection Sink         security/detect-object-injection
+  370:15   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  373:5    warning  Generic Object Injection Sink               security/detect-object-injection
+  373:24   warning  Generic Object Injection Sink               security/detect-object-injection
+  381:137  warning  Generic Object Injection Sink               security/detect-object-injection
+  381:156  warning  Generic Object Injection Sink               security/detect-object-injection
+  401:17   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  402:20   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  404:56   warning  Generic Object Injection Sink               security/detect-object-injection
+  413:33   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  418:91   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  418:91   warning  Generic Object Injection Sink               security/detect-object-injection
+  470:180  error    'e' is defined but never used               no-unused-vars
+  480:15   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  502:54   warning  Generic Object Injection Sink               security/detect-object-injection
+  502:79   warning  Generic Object Injection Sink               security/detect-object-injection
+  515:120  error    'e' is defined but never used               no-unused-vars
+  538:17   warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  541:7    warning  Generic Object Injection Sink               security/detect-object-injection
+  541:28   warning  Generic Object Injection Sink               security/detect-object-injection
+  542:61   warning  Generic Object Injection Sink               security/detect-object-injection
+  542:80   warning  Generic Object Injection Sink               security/detect-object-injection
+  552:45   warning  Generic Object Injection Sink               security/detect-object-injection
+  552:64   warning  Generic Object Injection Sink               security/detect-object-injection
+  553:92   warning  Generic Object Injection Sink               security/detect-object-injection
+  553:104  warning  Generic Object Injection Sink               security/detect-object-injection
+
+/home/user/rechenkranlw/index.html
+   491:115  warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   491:121  warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   491:130  warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   491:136  warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   530:97   error    'e' is defined but never used                                                                                                                  no-unused-vars
+   530:100  error    Empty block statement                                                                                                                          no-empty
+   535:109  error    'e' is defined but never used                                                                                                                  no-unused-vars
+   535:112  error    Empty block statement                                                                                                                          no-empty
+   536:26   error    'fromTest' is assigned a value but never used                                                                                                  no-unused-vars
+   542:88   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   545:92   error    'e' is defined but never used                                                                                                                  no-unused-vars
+   545:95   error    Empty block statement                                                                                                                          no-empty
+   587:3    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+   660:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+   666:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+   673:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+   692:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+   694:3    error    Unsafe assignment to innerHTML (Variable 'svg' reassigned with unsafe value at 170:41)                                                         no-unsanitized/property
+   704:12   error    'e' is defined but never used                                                                                                                  no-unused-vars
+   742:7    error    'OPSYM' is assigned a value but never used                                                                                                     no-unused-vars
+   809:83   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   809:95   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   818:10   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   818:22   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   818:38   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   818:56   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   820:13   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   822:14   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   860:17   error    'ans' is assigned a value but never used                                                                                                       no-unused-vars
+   915:3    error    Unsafe assignment to innerHTML (Variable 'html' declared as function parameter, which is considered unsafe. 'FunctionDeclaration' at 427:0)    no-unsanitized/property
+   937:32   warning  Function Call Object Injection Sink                                                                                                            security/detect-object-injection
+   938:5    error    Unsafe assignment to innerHTML (Variable 'v' declared as function parameter, which is considered unsafe. 'ArrowFunctionExpression' at 446:17)  no-unsanitized/property
+   992:18   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   992:48   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   996:6    warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   996:21   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   996:37   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+   996:50   warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+  1020:9    error    't' is assigned a value but never used                                                                                                         no-unused-vars
+  1036:3    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1064:10   error    'moveTo' is already defined as a built-in global variable                                                                                      no-redeclare
+  1094:35   warning  Variable Assigned to Object Injection Sink                                                                                                     security/detect-object-injection
+  1109:43   warning  Variable Assigned to Object Injection Sink                                                                                                     security/detect-object-injection
+  1168:7    warning  Generic Object Injection Sink                                                                                                                  security/detect-object-injection
+  1184:3    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1185:3    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1191:3    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1216:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1238:5    error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1292:15   error    Unsafe assignment to innerHTML                                                                                                                 no-unsanitized/property
+  1447:152  error    'e' is defined but never used                                                                                                                  no-unused-vars
+  1447:155  error    Empty block statement                                                                                                                          no-empty
+  1450:62   error    'e' is defined but never used                                                                                                                  no-unused-vars
+  1450:65   error    Empty block statement                                                                                                                          no-empty
+  1466:180  error    'e' is defined but never used                                                                                                                  no-unused-vars
+  1532:118  error    'e' is defined but never used                                                                                                                  no-unused-vars
+
+✖ 98 problems (40 errors, 58 warnings)
+

@@ -1,0 +1,22 @@
+{
+  "name": "rechenkranlw",
+  "private": true,
+  "description": "Rechenkran und 1·1-Test für LearningView – Prüfwerkzeuge (Lint, SAST, Tests)",
+  "license": "UNLICENSED",
+  "scripts": {
+    "lint": "eslint .",
+    "sast": "semgrep --disable-version-check --config .semgrep/rules.yml --metrics=off --error --no-git-ignore tests/.extracted",
+    "test": "node tests/run.mjs",
+    "test:all": "node tests/run.mjs --all",
+    "check": "npm run lint && node tests/extract.mjs && npm run sast && npm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.15.0",
+    "eslint-plugin-html": "8.2.1",
+    "eslint-plugin-no-unsanitized": "4.1.5",
+    "eslint-plugin-security": "4.2.1",
+    "globals": "17.14.0",
+    "playwright": "1.63.0"
+  }
+}

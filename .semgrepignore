@@ -1,0 +1,3 @@
+# Eigene Ausschlussliste (ersetzt die Standardliste, die tests/ ausschließen würde)
+node_modules/
+tests/artifacts/

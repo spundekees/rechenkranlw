@@ -1,0 +1,59 @@
+# Eigene Semgrep-Regeln (SAST) für dieses Projekt. Geprüft wird das aus den HTML-Dateien
+# herausgezogene JavaScript (tests/extract.mjs → tests/.extracted/*.js).
+rules:
+  - id: postmessage-stern-als-ziel
+    languages: [javascript]
+    severity: ERROR
+    message: postMessage mit "*" als Ziel-Origin sendet Daten an beliebige Fenster. Feste Origin verwenden.
+    pattern: $W.postMessage($MSG, "*")
+  - id: message-listener-ohne-origin-pruefung
+    languages: [javascript]
+    severity: ERROR
+    message: message-Listener prüft event.origin nicht.
+    patterns:
+      - pattern: window.addEventListener("message", ($E) => { ... })
+      - pattern-not: |
+          window.addEventListener("message", ($E) => { ... if (<... $E.origin ...>) return; ... })
+  - id: eval-oder-function
+    languages: [javascript]
+    severity: ERROR
+    message: Dynamische Codeausführung (eval / new Function / setTimeout mit Text) ist verboten.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+  - id: document-write
+    languages: [javascript]
+    severity: ERROR
+    message: document.write ist verboten.
+    pattern-either:
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+  - id: html-einfuegen-mit-variablen
+    languages: [javascript]
+    severity: WARNING
+    message: HTML wird aus nicht festen Werten zusammengesetzt (XSS-Gefahr). textContent / DOM-Elemente verwenden.
+    patterns:
+      - pattern-either:
+          - pattern: $X.innerHTML = $V
+          - pattern: $X.outerHTML = $V
+          - pattern: $X.insertAdjacentHTML($P, $V)
+      - pattern-not: $X.innerHTML = "..."
+      - pattern-not: $X.innerHTML = '...' + '...'
+  - id: localstorage-personenbezogen
+    languages: [javascript]
+    severity: WARNING
+    message: Möglicherweise personenbezogene Daten im localStorage. Nur Einstellungen speichern.
+    patterns:
+      - pattern: localStorage.setItem($K, $V)
+      - metavariable-regex:
+          metavariable: $V
+          regex: (?i).*(name|surname|student|answer|attempt|round).*
+  - id: neues-fenster-ohne-noopener
+    languages: [javascript]
+    severity: WARNING
+    message: window.open ohne "noopener" erlaubt der neuen Seite Zugriff auf dieses Fenster.
+    patterns:
+      - pattern: window.open($URL, ...)
+      - pattern-not: window.open($URL, $T, "...noopener...")

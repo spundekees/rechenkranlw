@@ -486,6 +486,72 @@
 
 <script>
 'use strict';
+/* ---------- Logging & Debugging (identisch in allen HTML-Dateien, siehe docs/LOGGING.md) ---------- */
+// Log-Level über die Adresse: ?log=DEBUG|INFO|WARNING|ERROR|CRITICAL (Standard: WARNING)
+// ?debug=1 oder Strg+Alt+D: Level DEBUG und Log-Fenster mit „Herunterladen“ (Datei *.log) und „Kopieren“.
+// Datenschutz: Es werden keine Namen, IDs oder Speicherstände protokolliert, nur Zustände, Zähler und Fehler.
+const LOG = (() => {
+  const LEVELS = Object.freeze({ DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50 });
+  const levelValue = (name) => Object.prototype.hasOwnProperty.call(LEVELS, name) ? LEVELS[name] : null;
+  let params;
+  try { params = new URLSearchParams(location.search); } catch { params = new URLSearchParams(); }
+  let debug = params.get('debug') === '1';
+  let min = levelValue(String(params.get('log') || '').toUpperCase()) ?? (debug ? LEVELS.DEBUG : LEVELS.WARNING);
+  const MAX_LINES = 1000, buffer = [];
+  let panel = null, panelList = null;
+  const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+  function write(level, component, message, err) {
+    if (levelValue(level) < min) return;
+    let line = `${stamp()} | ${level} | ${component} | ${message}`;
+    if (err && err.stack) line += `\nTraceback:\n${err.stack}`;
+    else if (err) line += ` | ${String(err)}`;
+    buffer.push(line);
+    if (buffer.length > MAX_LINES) buffer.shift();
+    const out = levelValue(level) >= LEVELS.ERROR ? console.error : level === 'WARNING' ? console.warn : console.log;
+    out(line);
+    if (panelList) { const li = document.createElement('li'); li.textContent = line; panelList.append(li); panelList.scrollTop = panelList.scrollHeight; }
+  }
+  function fileName() { return `${document.title.replace(/[^\wäöüÄÖÜß-]+/g, '-')}-${stamp().replace(/[: ]/g, '-')}.log`; }
+  function download() {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buffer.join('\n') + '\n'], { type: 'text/plain' }));
+      a.download = fileName(); document.body.append(a); a.click(); a.remove();
+      write('INFO', 'log', 'Log-Datei heruntergeladen');
+    } catch (e) { write('ERROR', 'log', 'Herunterladen nicht möglich', e); }
+  }
+  function copy() {
+    const text = buffer.join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => write('INFO', 'log', 'Log kopiert'), (e) => write('WARNING', 'log', 'Kopieren nicht möglich', e));
+  }
+  function showPanel() {
+    if (panel) return;
+    panel = document.createElement('div');
+    panel.setAttribute('style', 'position:fixed;right:8px;bottom:8px;z-index:99999;width:min(560px,96vw);max-height:40vh;display:flex;flex-direction:column;background:#111;color:#eee;font:12px/1.4 monospace;border:2px solid #fde047;border-radius:8px');
+    const bar = document.createElement('div');
+    bar.setAttribute('style', 'display:flex;gap:6px;padding:6px;align-items:center');
+    const title = document.createElement('b'); title.textContent = 'Debug-Log'; title.style.flex = '1';
+    const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = fn; return b; };
+    bar.append(title, mk('Herunterladen', download), mk('Kopieren', copy), mk('Schließen', () => { panel.remove(); panel = panelList = null; }));
+    panelList = document.createElement('ol');
+    panelList.setAttribute('style', 'margin:0;padding:4px 8px 8px 28px;overflow:auto;white-space:pre-wrap');
+    buffer.forEach((l) => { const li = document.createElement('li'); li.textContent = l; panelList.append(li); });
+    panel.append(bar, panelList);
+    document.body.append(panel);
+  }
+  function enableDebug() { debug = true; min = LEVELS.DEBUG; write('INFO', 'log', 'Debug-Modus eingeschaltet'); showPanel(); }
+  window.addEventListener('error', (e) => write('ERROR', 'window', e.message || 'Unbekannter Fehler', e.error));
+  window.addEventListener('unhandledrejection', (e) => write('ERROR', 'promise', 'Unbehandelte Promise-Ablehnung', e.reason));
+  document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) enableDebug(); });
+  if (debug) { if (document.body) showPanel(); else document.addEventListener('DOMContentLoaded', showPanel); }
+  return Object.freeze({
+    debug: (c, m) => write('DEBUG', c, m), info: (c, m) => write('INFO', c, m), warning: (c, m, e) => write('WARNING', c, m, e),
+    error: (c, m, e) => write('ERROR', c, m, e), critical: (c, m, e) => write('CRITICAL', c, m, e),
+    lines: () => buffer.slice(), download, enableDebug,
+  });
+})();
+
 const $ = (s) => document.querySelector(s);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -507,6 +573,50 @@ const settings = {
   range: 20, addOps: ['plus', 'minus'], cross: ['ohne', 'mit'], types: ['ZE+E', 'ZE+ZE'],
   count: 20, sound: true, season: 'auto',
 };
+/* ---------- Eingabeprüfung ----------
+   Alles, was von außen kommt (localStorage, Adresse, LearningView-Einstellungen, Speicherstände),
+   wird hier geprüft. Unbekannte Schlüssel und ungültige Werte werden verworfen. */
+const ALLOWED = Object.freeze({
+  mode: ['mul', 'add'], mulOps: ['mul', 'div'], range: [10, 20, 100], addOps: ['plus', 'minus'],
+  cross: ['ohne', 'mit'], types: ['Z+Z', 'ZE+Z', 'ZE+E', 'ZE+ZE'], count: [12, 20, 32, 48],
+  season: ['auto', 'spring', 'summer', 'autumn', 'winter'],
+});
+const subsetOf = (v, allowed) => Array.isArray(v) ? [...new Set(v.filter(x => allowed.includes(x)))] : null;
+function sanitizeSettings(src) {
+  const out = {};
+  if (!src || typeof src !== 'object') return out;
+  if (ALLOWED.mode.includes(src.mode)) out.mode = src.mode;
+  if (Array.isArray(src.rows)) out.rows = [...new Set(src.rows.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 10))].sort((a, b) => a - b);
+  const mulOps = subsetOf(src.mulOps, ALLOWED.mulOps); if (mulOps) out.mulOps = mulOps;
+  const addOps = subsetOf(src.addOps, ALLOWED.addOps); if (addOps) out.addOps = addOps;
+  const cross = subsetOf(src.cross, ALLOWED.cross); if (cross) out.cross = cross;
+  const types = subsetOf(src.types, ALLOWED.types); if (types) out.types = types;
+  if (ALLOWED.range.includes(Number(src.range))) out.range = Number(src.range);
+  if (ALLOWED.count.includes(Number(src.count))) out.count = Number(src.count);
+  if (ALLOWED.season.includes(src.season)) out.season = src.season;
+  if (typeof src.sound === 'boolean') out.sound = src.sound;
+  return out;
+}
+function parseJSON(text, what) {
+  if (!text) return null;
+  try { return JSON.parse(text); } catch (e) { LOG.warning('daten', `${what}: ungültiges JSON, wird ignoriert`, e); return null; }
+}
+// Eine gespeicherte Runde stammt aus dem Speicherstand eines Kindes und gilt daher als nicht vertrauenswürdig
+const num = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(Math.round(n), 1e6) : 0; };
+function sanitizeRound(r) {
+  if (!r || typeof r !== 'object') return null;
+  return {
+    t: typeof r.t === 'string' ? r.t.slice(0, 40) : '', ex: typeof r.ex === 'string' ? r.ex.slice(0, 200) : '',
+    planned: num(r.planned), solved: num(r.solved), first: num(r.first), errors: num(r.errors), sec: num(r.sec),
+    wrong: Array.isArray(r.wrong) ? r.wrong.filter(w => typeof w === 'string').slice(0, 100).map(w => w.slice(0, 40)) : [],
+    done: r.done === true, stars: num(r.stars),
+  };
+}
+function sanitizeState(o) {
+  if (!o || typeof o !== 'object' || !Array.isArray(o.rounds)) return null;
+  return { version: 1, prefs: sanitizeSettings(o.prefs), rounds: o.rounds.slice(-500).map(sanitizeRound).filter(Boolean) };
+}
+
 /* ---------- LearningView ---------- */
 // Läuft der Kran in LearningView, kommen Einstellungen und Speicherstand von dort (kein localStorage).
 const LV_ORIGIN = 'https://learningview.org';
@@ -527,14 +637,23 @@ const lvMode = urlPreset ? null : (LV && LV.mode ? LV.mode : (IN_FRAME ? 'studen
 const lvSend = (m) => { if (IN_FRAME) window.parent.postMessage(m, LV_ORIGIN); };
 // Einstellungen der Lehrperson für diese Aufgabe: { version, settings, allowChoice }
 let lvTemplate = { version: 1, settings: null, allowChoice: true };
-try { if (LV && LV.appTemplate) Object.assign(lvTemplate, JSON.parse(LV.appTemplate)); } catch (e) {}
+function applyTemplate(o) {
+  if (!o || typeof o !== 'object') return;
+  lvTemplate = { version: 1, settings: o.settings ? sanitizeSettings(o.settings) : null, allowChoice: o.allowChoice !== false };
+}
+if (LV && LV.appTemplate) applyTemplate(parseJSON(LV.appTemplate, 'appTemplate'));
 const lvLocked = () => !!urlPreset || (lvMode && lvMode !== 'settings' && lvTemplate.settings && !lvTemplate.allowChoice);
 // Speicherstand des Kindes: { version, prefs, rounds: [...] }
 let lvState = { version: 1, prefs: {}, rounds: [] };
 
-if (!lvMode) { try { Object.assign(settings, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) {} }
-if (urlPreset) { const { fromTest, ...ex } = urlPreset; Object.assign(settings, ex); }
-if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings);
+if (!lvMode) {
+  let stored = null;
+  try { stored = localStorage.getItem(STORE_KEY); } catch { LOG.info('speicher', 'localStorage nicht verfügbar'); }
+  Object.assign(settings, sanitizeSettings(parseJSON(stored, 'localStorage')));
+}
+if (urlPreset) Object.assign(settings, sanitizeSettings(urlPreset));
+if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings);   // bereits geprüft (applyTemplate)
+LOG.info('start', `Rechenkran gestartet, Modus: ${lvMode || (urlPreset ? 'eigenständig, Übung per Link' : 'eigenständig')}`);
 const PREF_KEYS = ['sound'];
 // In LearningView gibt es keine Jahreszeiten-Auswahl: immer automatisch nach Datum
 if (lvMode) settings.season = 'auto';
@@ -542,7 +661,7 @@ const EXERCISE_KEYS = ['mode', 'rows', 'mulOps', 'range', 'addOps', 'cross', 'ty
 const pickKeys = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
 const saveSettings = () => {
   if (urlPreset) return;   // vorgegebene Übung nicht als eigene Einstellung merken
-  if (!lvMode) { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {} return; }
+  if (!lvMode) { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch { LOG.debug('speicher', 'Einstellungen nicht gespeichert (kein localStorage)'); } return; }
   if (lvMode === 'settings') { lvTemplate.settings = pickKeys(settings, EXERCISE_KEYS); lvSaveTemplate(); return; }
   if (lvMode === 'student') {
     lvState.prefs = pickKeys(settings, lvLocked() ? PREF_KEYS : [...PREF_KEYS, ...EXERCISE_KEYS]);
@@ -584,7 +703,8 @@ const saveSettings = () => {
   s.push(`<rect x="100" y="93" width="38" height="22" rx="4" fill="#e0f2fe" stroke="${D}" stroke-width="2"/>`);
   s.push(`<circle cx="112" cy="106" r="5" fill="#fca5a5"/><rect x="107" y="110" width="10" height="5" rx="2" fill="#2563eb"/>`);
   s.push(`<path d="M106 102 q6 -7 12 0" fill="#f97316"/>`);
-  $('#craneSvg').innerHTML = s.join('');
+  // eslint-disable-next-line no-unsanitized/property -- SVG nur aus festen Werten und Zufallszahlen des Codes, keine Eingaben
+  $('#craneSvg').innerHTML = s.join('');   // nosemgrep: html-einfuegen-mit-variablen
 })();
 
 /* ---------- Jahreszeiten ---------- */
@@ -657,20 +777,23 @@ function applySeason() {
     far.forEach(([x, y, k], i) => svg += i % 2 ? fir(x, y, k, '#16a34a') : roundTree(x, y, k, ['#86efac', '#4ade80']));
     near.forEach(([x, y, k], i) => svg += roundTree(x, y, k, i % 2 ? pink : ['#bbf7d0', '#86efac', '#4ade80'], blos));
     svg += flowers(40, ['#f472b6', '#facc15', '#fff', '#a78bfa']);
-    $('#fx').innerHTML = particles('petal', 16, ['#fbcfe8', '#f9a8d4', '#fff']) + birds(2);
+    // eslint-disable-next-line no-unsanitized/property -- feste Werte aus dem Code, keine Eingaben
+    $('#fx').innerHTML = particles('petal', 16, ['#fbcfe8', '#f9a8d4', '#fff']) + birds(2);   // nosemgrep: html-einfuegen-mit-variablen
   } else if (season === 'summer') {
     far.forEach(([x, y, k], i) => svg += i % 2 ? roundTree(x, y, k, ['#16a34a', '#22c55e']) : fir(x, y, k, '#15803d'));
     near.forEach(([x, y, k], i) => svg += i === 1 ? fir(x, y, k, '#166534') :
       roundTree(x, y, k, ['#15803d', '#16a34a', '#22c55e'], i === 2 ? [[-18, -80, '#ef4444'], [20, -95, '#ef4444'], [5, -66, '#ef4444']] : null));
     svg += flowers(30, ['#ef4444', '#facc15', '#fff', '#3b82f6']);
-    $('#fx').innerHTML = birds(4);
+    // eslint-disable-next-line no-unsanitized/property -- feste Werte aus dem Code, keine Eingaben
+    $('#fx').innerHTML = birds(4);   // nosemgrep: html-einfuegen-mit-variablen
   } else if (season === 'autumn') {
     const crowns = [['#f97316', '#ea580c', '#fb923c'], ['#facc15', '#eab308', '#f59e0b'], ['#dc2626', '#ef4444', '#f97316']];
     far.forEach(([x, y, k], i) => svg += i % 2 ? fir(x, y, k, '#166534') : roundTree(x, y, k, crowns[i % 3]));
     near.forEach(([x, y, k], i) => svg += i === 3 ? bareTree(x, y, k) : roundTree(x, y, k, crowns[i % 3]));
     // Laub am Boden
     for (let i = 0; i < 40; i++) svg += `<ellipse cx="${120 + Math.random() * 870}" cy="${500 + Math.random() * 34}" rx="5" ry="3" fill="${pick(['#ea580c', '#facc15', '#b91c1c', '#92400e'])}"/>`;
-    $('#fx').innerHTML = particles('leaf', 18, ['#f97316', '#facc15', '#dc2626', '#b45309']);
+    // eslint-disable-next-line no-unsanitized/property -- feste Werte aus dem Code, keine Eingaben
+    $('#fx').innerHTML = particles('leaf', 18, ['#f97316', '#facc15', '#dc2626', '#b45309']);   // nosemgrep: html-einfuegen-mit-variablen
   } else {
     far.forEach(([x, y, k], i) => svg += i % 2 ? bareTree(x, y, k) : fir(x, y, k, '#14532d', true));
     near.forEach(([x, y, k], i) => svg += i === 1 ? bareTree(x, y, k) : fir(x, y, k, '#166534', true));
@@ -689,9 +812,11 @@ function applySeason() {
     let d = 'M0 540';
     for (let x = 0; x <= 1000; x += 40) d += ` Q${x + 20} ${528 + Math.random() * 4} ${x + 40} 540`;
     svg += `<path d="${d} Z" fill="#fff"/>`;
-    $('#fx').innerHTML = particles('snow', 45);
+    // eslint-disable-next-line no-unsanitized/property -- feste Werte aus dem Code, keine Eingaben
+    $('#fx').innerHTML = particles('snow', 45);   // nosemgrep: html-einfuegen-mit-variablen
   }
-  $('#seasonSvg').innerHTML = svg;
+  // eslint-disable-next-line no-unsanitized/property -- SVG nur aus festen Werten und Zufallszahlen des Codes, keine Eingaben
+  $('#seasonSvg').innerHTML = svg;   // nosemgrep: html-einfuegen-mit-variablen
 }
 
 /* ---------- Ton (WebAudio, startet erst nach Antippen) ---------- */
@@ -701,7 +826,7 @@ function audio() {
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
-  } catch (e) { return null; }
+  } catch (e) { LOG.warning('ton', 'Audio nicht verfügbar', e); return null; }
   return actx;
 }
 function tone(freq, dur, type = 'sine', vol = .18, when = 0, slideTo = null) {
@@ -739,7 +864,6 @@ window.addEventListener('orientationchange', () => setTimeout(fit, 250));
 
 /* ---------- Aufgaben ---------- */
 // Eine Aufgabe: { a, op, b, ans, max, kind }  op: '·' ':' '+' '−'
-const OPSYM = { mul: '·', div: ':', plus: '+', minus: '−' };
 const taskText = (t) => `${t.a} ${t.op} ${t.b}`;
 const taskKey = (t) => t.op === '·' ? `${Math.min(t.a, t.b)}·${Math.max(t.a, t.b)}` : `${t.a}${t.op}${t.b}`;
 const isTen = (n) => n % 10 === 0;
@@ -857,7 +981,7 @@ function makeOptions(t) {
 }
 
 function tipFor(t) {
-  const { a, b, ans } = t;
+  const { a, b } = t;
   if (t.op === ':') return `Denk an die Malaufgabe: ? · ${b} = ${a}`;
   if (t.op === '·') {
     if (b === 1) return `${a} · 1 ist einfach ${a}`;
@@ -911,8 +1035,10 @@ function placeCarriage(animate = true) {
   $('#container').classList.toggle('target', st.slot === 0 && st.mode === 'play');
 }
 
-function say(html, cls = '', ms = 1600) {
-  bubble.innerHTML = html;
+// Sprechblase: Text und optionale zweite Zeile, immer als Text (nie als HTML)
+function say(text, cls = '', ms = 1600, small = '') {
+  bubble.textContent = text;
+  if (small) { const s = document.createElement('small'); s.textContent = small; bubble.append(s); }
   bubble.className = 'show ' + cls;
   clearTimeout(say.t);
   if (ms) say.t = setTimeout(() => bubble.classList.remove('show'), ms);
@@ -935,9 +1061,10 @@ function buildTrucks(values) {
     t.className = 'truck';
     t.style.left = (SLOTS[i + 1] - 54) + 'px';
     t.style.setProperty('--c', colors[i]);
-    t.innerHTML = `<div class="body"><div class="chassis"></div><div class="bed"><span class="num">${v}</span></div><div class="cab"></div>
-      <div class="wheel w1"></div><div class="wheel w2"></div><div class="wheel w3"></div></div>`;
-    t.addEventListener('pointerdown', (e) => { e.preventDefault(); moveTo(i + 1); });
+    t.innerHTML = '<div class="body"><div class="chassis"></div><div class="bed"><span class="num"></span></div><div class="cab"></div>'
+      + '<div class="wheel w1"></div><div class="wheel w2"></div><div class="wheel w3"></div></div>';
+    t.querySelector('.num').textContent = String(v);
+    t.addEventListener('pointerdown', (e) => { e.preventDefault(); moveCraneTo(i + 1); });
     trucksEl.appendChild(t);
   });
 }
@@ -1017,7 +1144,6 @@ async function nextBatch() {
 }
 
 function showTask() {
-  const t = current();
   st.tries = 0; st.dead = new Set();
   [...trucksEl.children].forEach(tr => tr.classList.remove('dead', 'wrong', 'hint', 'ok'));
   st.carrying = false;
@@ -1033,7 +1159,7 @@ function showTask() {
 
 function renderPeeks() {
   const n = Math.max(0, st.batchEnd - st.idx - (st.carrying ? 1 : 0));
-  $('#peeks').innerHTML = '<i></i>'.repeat(n);
+  $('#peeks').replaceChildren(...Array.from({ length: n }, () => document.createElement('i')));
 }
 
 // Haken in den Container lassen und die nächste Aufgabe herausziehen
@@ -1061,7 +1187,7 @@ async function pickUp() {
   placeCarriage();
 }
 
-function moveTo(i) {
+function moveCraneTo(i) {
   if (st.mode !== 'play') return;
   if (i === st.slot) return;
   const dir = Math.sign(i - st.slot);
@@ -1075,7 +1201,7 @@ function move(dir) {
   if (st.mode !== 'play') return;
   const n = st.slot + dir;
   if (n < 0 || n >= SLOTS.length) { sfx.bump(); return; }
-  moveTo(n);
+  moveCraneTo(n);
 }
 
 async function drop() {
@@ -1120,7 +1246,7 @@ async function drop() {
     truck.classList.add('ok');
     sfx.good();
     confetti(SLOTS[st.slot], 450);
-    say(`${pick(PRAISE)}<small>${taskText(t)} = ${ans}</small>`, 'good', 1700);
+    say(pick(PRAISE), 'good', 1700, `${taskText(t)} = ${ans}`);
     // Kiste auf den Laster umsetzen
     const c = crate.cloneNode(true); c.removeAttribute('id'); c.classList.remove('pop', 'shake');
     truck.querySelector('.body').appendChild(c);
@@ -1156,7 +1282,7 @@ async function drop() {
       if (reps < 2) st.queue.splice(Math.min(st.idx + 4, st.queue.length), 0, { ...t, rep: true });
     }
     updateHud();
-    say(`Das passt nicht.<small>${tipFor(t)}</small>`, 'bad', 0);
+    say('Das passt nicht.', 'bad', 0, tipFor(t));
     await sleep(500);
     setRope(ROPE_UP, true);
     await sleep(450);
@@ -1181,20 +1307,21 @@ function finish() {
   const rate = total ? st.score / total : 0;
   const stars = rate >= .9 ? 3 : rate >= .7 ? 2 : 1;
   $('#endTitle').textContent = stars === 3 ? 'Super gemacht! 🎉' : stars === 2 ? 'Gut gemacht! 👍' : 'Geschafft! 💪';
-  $('#endStars').innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? '' : 'off'}">⭐</span>`).join('');
-  $('#endStats').innerHTML = `
-    <div><b>${st.score} / ${total}</b>sofort richtig</div>
-    <div><b>${st.bestStreak}</b>beste Serie 🔥</div>`;
+  $('#endStars').replaceChildren(...[1, 2, 3].map(i => { const s = document.createElement('span'); s.textContent = '⭐'; if (i > stars) s.className = 'off'; return s; }));
+  const stat = (big, label) => { const d = document.createElement('div'), b = document.createElement('b'); b.textContent = big; d.append(b, label); return d; };
+  $('#endStats').replaceChildren(stat(`${st.score} / ${total}`, 'sofort richtig'), stat(String(st.bestStreak), 'beste Serie 🔥'));
   const list = [...st.mistakes.values()];
   $('#endMistakesBox').style.display = list.length ? '' : 'none';
   $('#btnPractice').style.display = list.length ? '' : 'none';
-  $('#endMistakes').innerHTML = list.map(m => `<span>${taskText(m)} = ${m.ans}</span>`).join('');
+  $('#endMistakes').replaceChildren(...list.map(m => { const s = document.createElement('span'); s.textContent = `${taskText(m)} = ${m.ans}`; return s; }));
   for (let i = 0; i < 4; i++) setTimeout(() => confetti(200 + Math.random() * 600, 300), i * 250);
+  LOG.info('spiel', `Runde beendet: ${st.score}/${total} sofort richtig, ${st.errors} Fehler`);
   recordRound(true, stars);
   setTimeout(() => $('#endScreen').classList.add('show'), 700);
 }
 
 function startGame(tasks, practice = false) {
+  LOG.info('spiel', `Runde gestartet: ${tasks.length} Aufgaben${practice ? ' (Fehler üben)' : ''}, ${describeExercise(settings)}`);
   st.round = null; st.practice = practice; st.started = Date.now();
   $('#menu').classList.remove('show');
   $('#endScreen').classList.remove('show');
@@ -1213,7 +1340,8 @@ function chipGroup(el, items, isOn, onClick) {
   items.forEach(it => {
     const b = document.createElement('button');
     b.className = 'chip big2' + (isOn(it.v) ? ' on' : '');
-    b.innerHTML = it.label + (it.sub ? `<small>${it.sub}</small>` : '');
+    b.textContent = it.label;
+    if (it.sub) { const sm = document.createElement('small'); sm.textContent = it.sub; b.append(sm); }
     b.onclick = () => { onClick(it.v); saveSettings(); renderMenu(); };
     el.appendChild(b);
   });
@@ -1235,7 +1363,8 @@ function renderMenu() {
     const b = document.createElement('button');
     b.className = 'row-btn' + (s.rows.includes(r) ? ' on' : '');
     b.style.setProperty('--c', ROW_COLORS[r - 1]);
-    b.innerHTML = `${r}<small>${r}er-Reihe</small>`;
+    b.textContent = String(r);
+    { const sm = document.createElement('small'); sm.textContent = `${r}er-Reihe`; b.append(sm); }
     b.onclick = () => { s.rows = toggleIn(s.rows, r).sort((x, y) => x - y); saveSettings(); renderMenu(); };
     rb.appendChild(b);
   }
@@ -1289,7 +1418,7 @@ function renderMenu() {
   $('#lvSettingsNote').hidden = lvMode !== 'settings';
   $('#lvFixed').hidden = !locked;
   $('.menu-card').classList.toggle('narrow', !!locked);
-  if (locked) $('#lvFixed').innerHTML = urlPreset && urlPreset.fromTest ? `🎯 Deine Übung nach dem Test: <b></b>` : `🎯 Deine Übung: <b></b>`, $('#lvFixed b').textContent = describeExercise(settings);
+  if (locked) { const b = document.createElement('b'); b.textContent = describeExercise(settings); $('#lvFixed').replaceChildren(urlPreset && urlPreset.fromTest ? '🎯 Deine Übung nach dem Test: ' : '🎯 Deine Übung: ', b); }
   ['#modeTabs', '#secMul', '#secAdd', '#countChips', '#countTitle'].forEach(sel => { if (locked) $(sel).style.display = 'none'; });
   if (locked) $('#poolInfo').textContent = `${settings.count} Aufgaben`;
   $('#lvChoiceBox').hidden = lvMode !== 'settings';
@@ -1352,7 +1481,7 @@ function holdButton(sel, fn) {
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
   b.addEventListener('contextmenu', e => e.preventDefault());
 }
-$('#container').addEventListener('pointerdown', (e) => { e.preventDefault(); moveTo(0); });
+$('#container').addEventListener('pointerdown', (e) => { e.preventDefault(); moveCraneTo(0); });
 holdButton('#btnLeft', () => move(-1));
 holdButton('#btnRight', () => move(1));
 $('#btnDrop').addEventListener('pointerdown', (e) => { e.preventDefault(); audio(); drop(); });
@@ -1410,6 +1539,7 @@ function lvFlush() {
     lvState.rounds.shift(); data = JSON.stringify(lvState);
   }
   showSave('Speichere …');
+  LOG.debug('lv', `saveAnswerData gesendet (${new TextEncoder().encode(data).byteLength} Bytes)`);
   lvSend({ type: 'saveAnswerData', data });
 }
 function showSave(text, warn = false) {
@@ -1432,23 +1562,24 @@ window.addEventListener('message', (event) => {
   if (!lvMode || event.source !== window.parent || event.origin !== LV_ORIGIN) return;
   const d = event.data;
   if (d === 'SAVED') {
-    saver.busy = false; showSave('✓ Gespeichert');
+    saver.busy = false; showSave('✓ Gespeichert'); LOG.debug('lv', 'SAVED empfangen');
     if (saver.dirty) saver.timer = setTimeout(lvFlush, 1500);
   } else if (d && d.type === 'saveAnswerDataError') {
     saver.busy = false;
+    LOG.error('lv', `Speichern fehlgeschlagen: ${d.error}`);
     showSave(d.error === 'ANSWER_DATA_TOO_LARGE' ? 'Nicht gespeichert: zu viele Daten.' : 'Speichern fehlgeschlagen – neuer Versuch …', true);
     if (d.error !== 'ANSWER_DATA_TOO_LARGE') { saver.dirty = true; saver.timer = setTimeout(lvFlush, 3000); }
   } else if (d === 'APP_TEMPLATE_SAVED') {
     tplSaver.busy = false; showSave('✓ Einstellungen gespeichert');
     if (tplSaver.dirty) lvFlushTemplate();
   } else if (d && d.type === 'saveAppTemplateError') {
-    tplSaver.busy = false; showSave('Einstellungen nicht gespeichert: ' + d.error, true);
+    tplSaver.busy = false; showSave('Einstellungen nicht gespeichert: ' + d.error, true); LOG.error('lv', `appTemplate nicht gespeichert: ${d.error}`);
   } else if (d && d.type === 'sendAppTemplate' && lvMode === 'settings' && d.data) {
-    try { Object.assign(lvTemplate, JSON.parse(d.data)); if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings); renderMenu(); } catch (e) {}
+    applyTemplate(parseJSON(d.data, 'appTemplate')); if (lvTemplate.settings) Object.assign(settings, lvTemplate.settings); renderMenu();
   } else if (d && d.type === 'sendAnswerData') {
-    let saved = null;
-    if (d.data) { try { saved = JSON.parse(d.data); } catch (e) {} }
-    if (saved && Array.isArray(saved.rounds)) lvState = Object.assign({ version: 1, prefs: {}, rounds: [] }, saved);
+    const saved = sanitizeState(parseJSON(d.data, 'Speicherstand'));
+    if (saved) lvState = saved;
+    LOG.info('lv', `Speicherstand geladen: ${lvState.rounds.length} Runden`);
     if (lvMode === 'student') {
       Object.assign(settings, pickKeys(lvState.prefs || {}, lvLocked() ? PREF_KEYS : [...PREF_KEYS, ...EXERCISE_KEYS]));
       settings.season = 'auto';
@@ -1459,11 +1590,12 @@ window.addEventListener('message', (event) => {
   } else if (d && d.type === 'classDataConsentPending') {
     $('#reportBody').innerHTML = '<p class="rempty">Bitte bestätige in LearningView, dass die Klassendaten angezeigt werden dürfen.</p>';
   } else if (d && d.type === 'sendClassAnswerData' && lvMode === 'class') {
+    if (d.error) LOG.warning('lv', `Klassendaten nicht verfügbar: ${d.error}`); else LOG.info('lv', `Klassendaten erhalten: ${Array.isArray(d.data) ? d.data.length : 0} Einträge`);
     showClassReport(d);
   }
 });
 
-const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 const pct = (r) => r.solved ? Math.round(r.first / r.solved * 100) : null;
 function badge(p) {
   const s = document.createElement('span');
@@ -1529,7 +1661,7 @@ function showClassReport(d) {
   const tb = document.createElement('tbody');
   const rows = d.data.map(stu => {
     let rounds = [], bad = false;
-    if (stu.data) { try { const o = JSON.parse(stu.data); rounds = Array.isArray(o.rounds) ? o.rounds : []; } catch (e) { bad = true; } }
+    if (stu.data) { const o = sanitizeState(parseJSON(stu.data, 'Klassendaten')); if (o) rounds = o.rounds; else bad = true; }
     return { stu, rounds, bad };
   }).sort((a, b) => `${a.stu.surname} ${a.stu.name}`.localeCompare(`${b.stu.surname} ${b.stu.name}`, 'de'));
   rows.forEach(({ stu, rounds, bad }) => {

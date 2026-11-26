@@ -1,0 +1,26 @@
+{
+  "tests/einmaleins-test.test.mjs": {
+    "last_test": "2026-11-26T17:48:07",
+    "result": "failed",
+    "hash": "737bccf8d1ced46b584b54df841bc32384e0ed1bc13c0a7d05db73558d075696",
+    "deps": [
+      "einmaleins-test.html"
+    ]
+  },
+  "tests/rechenkran-lv.test.mjs": {
+    "last_test": "2026-11-26T17:46:28",
+    "result": "passed",
+    "hash": "cfbada8ae5be5174f0259142b513d343819bbf5edc5936488bb33daa9083b9ce",
+    "deps": [
+      "index.html"
+    ]
+  },
+  "tests/rechenkran.test.mjs": {
+    "last_test": "2026-11-26T17:47:35",
+    "result": "passed",
+    "hash": "254cb632d80270d4b7b5de7870854ccfbfea0961d2d9ae6a49dc7392bdf899e9",
+    "deps": [
+      "index.html"
+    ]
+  }
+}
